@@ -1,0 +1,14 @@
+name: Final_Question_DB
+title: Final_Question_DB
+username:
+account: impact-initiatives
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 9471701
+bundleId: 7469512
+url: https://impact-initiatives.shinyapps.io/Final_Question_DB/
+when: 1689665757.29687
+lastSyncTime: 1689665757.29688
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: shiny_10_final_version.R
