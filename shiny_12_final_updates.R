@@ -201,28 +201,48 @@ server <- function(input, output, session) {
   })
   
   project_table <- reactive({
+    
     if (Refresh_needed()) {
       database_proj <-
         sp_get_file_reach(sp_con,
                           'Documents/Questions_db/Project_database.xlsx')
+      
+      database_proj_rounds <- database_proj %>% 
+        distinct(Project_ID, round_id) %>% 
+        mutate(round_id = as.numeric(round_id)) %>% 
+        group_by(Project_ID) %>% 
+        arrange(Project_ID,round_id) %>% 
+        summarise(rounds = numbers_to_string(round_id)) %>% 
+        ungroup()
+      
       database_proj %>%
         group_by(Project_ID) %>%
         summarise(N_questions = n()) %>% 
         ungroup() %>% 
         inner_join(database_research_cycle %>% 
                      rename(Project_ID=Research_cycle_ID)) %>% 
-        relocate(Project_ID,Name,N_questions)
+        inner_join(database_proj_rounds) %>% 
+        relocate(Project_ID,Name,rounds,N_questions)
       
     } else{
+      database_proj_rounds <- database_proj %>% 
+        distinct(Project_ID, round_id) %>% 
+        mutate(round_id = as.numeric(round_id)) %>% 
+        group_by(Project_ID) %>% 
+        arrange(Project_ID,round_id) %>% 
+        summarise(rounds = numbers_to_string(round_id)) %>% 
+        ungroup()
+      
       database_proj %>%
         group_by(Project_ID) %>%
         summarise(N_questions = n()) %>% 
         ungroup() %>% 
         inner_join(database_research_cycle %>% 
                      rename(Project_ID=Research_cycle_ID)) %>% 
-        relocate(Project_ID,Name,N_questions)
+        inner_join(database_proj_rounds) %>% 
+        relocate(Project_ID,Name,rounds,N_questions)
     }
-    
+  
   })
   
   
