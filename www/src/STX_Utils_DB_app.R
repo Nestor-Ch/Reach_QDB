@@ -185,9 +185,9 @@ print('All functions have been added')
 # Define the Sharepoint connection --------------------------------------------------
 sp_con <-
   sp_connection(
-    site = 'https://acted-my.sharepoint.com/personal/mysharepoint_org', # replace with your address
-    username = 'my_username@reach-initiative.org', #replace with your username
-    password = keyring::key_get("email", 'my_username@reach-initiative.org'), # your password
+    site = 'https://acted-my.sharepoint.com/personal/nestor_cheryba_reach-initiative_org', # replace with your address
+    username = 'nestor.cheryba@reach-initiative.org', #replace with your username
+    password = "Par1s1sBurning", # your password
     get_config = T
   )
 
