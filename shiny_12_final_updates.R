@@ -1,4 +1,4 @@
-options(shiny.maxRequestSize = 30 * 1024 ^ 2)
+
 
 library(shiny)
 library(DT)
@@ -15,9 +15,43 @@ library(httr)
 library(xml2)
 library(curl)
 library(tidytext)
+library(leaflet)
+library(leaflet.extras2)
+library(rgdal)
+library(sf)
+# library(mapview)
+# library(webshot)
 
 source("www/src/STX_Utils_DB_app.R")
+rm(list=ls())
+# webshot::install_phantomjs(force = T)
+options(shiny.maxRequestSize = 30 * 1024 ^ 2,
+        rsconnect.max.bundle.files = 5145728000)
 
+ukraine <- st_read("www/shapefile/Ukraine_Admin1.shp") %>% 
+  st_simplify(preserveTopology = T, dTolerance = 3000)
+print(ukraine$ADM_NAME)
+choose_country_map <- leaflet::leaflet(
+  options = leafletOptions(
+    attributionControl = F,
+    zoomControl = F,
+    minZoom = 6, maxZoom = 6,
+    )) %>%
+  leaflet::addProviderTiles(providers$CartoDB.PositronNoLabels) %>%
+  leaflet::addPolygons(data= ukraine,
+                     fillColor  = "black",
+                     color = "#FFFFFF",
+                     weight= 1,
+                     fillOpacity = 0.8,
+                     highlightOptions = highlightOptions(
+                       fillColor = "#aaaaaa",
+                       color = "#aaaaaa",
+                       weight = 2,
+                       bringToFront = T
+                     ),
+                       label = ~ukraine$ADM_NAME,
+                       layerId = ~ukraine$ADM_PCODE)%>%
+  setView(lng = 31.14869, lat = 48.5, zoom = 6) 
 
 # --------------- Shiny itself ---------------------
 
@@ -38,7 +72,37 @@ ui <- fluidPage(
     includeCSS("www/style.css"),
     HTML(
       '<a style="padding-left:10px;" class="app-title" href= "https://www.reach-initiative.org/" target="_blank"><img src="reach.jpg" height = "50"></a><span class="app-description" style="font-size: 16px; color: #FFFFFF"><strong>Database_test</strong></span>'
-    )
+    ),
+  #   ,
+  #   tags$script("
+  #   $(document).ready(function() {    
+  #     setTimeout(function() {
+  # 
+  #       var map = $('#country_choice').data('leaflet-map');            
+  #       function disableZoom(e) {map.scrollWheelZoom.disable();}
+  # 
+  #       $(document).on('mousemove', '*', disableZoom);
+  # 
+  #       map.on('click', function() {
+  #         $(document).off('mousemove', '*', disableZoom);
+  #         map.scrollWheelZoom.enable();
+  #       });
+  #     }, 100);
+  #   })
+  # "),
+    # tags$script('
+    #                     var dimension = [0, 0];
+    #                     $(document).on("shiny:connected", function(e) {
+    #                     dimension[0] = document.getElementById("map").clientWidth;
+    #                     dimension[1] = document.getElementById("map").clientHeight;
+    #                     Shiny.onInputChange("dimension", dimension);
+    #                     });
+    #                     $(window).resize(function(e) {
+    #                     dimension[0] = document.getElementById("map").clientWidth;
+    #                     dimension[1] = document.getElementById("map").clientHeight;
+    #                     Shiny.onInputChange("dimension", dimension);
+    #                     });
+    #                     ')
   ),
   hr(),
   tabsetPanel(
@@ -171,10 +235,27 @@ ui <- fluidPage(
             div(style = "height: 10px;"),
             span(
               "Currently under construction"
-            )
+            ),
+
           )
         )
       )
+    ),
+    tabPanel(
+      "Geographical Input",
+      sidebarPanel(
+        uiOutput("project_id"),
+        uiOutput("round"),
+        uiOutput("month"),
+        uiOutput("year"),
+        uiOutput("uploadBTN")
+
+      ),
+      mainPanel(
+        div(
+          leafletOutput("country_choice", height = '600px')
+        )
+        )
     )
   )
 )
@@ -188,9 +269,12 @@ server <- function(input, output, session) {
     sp_get_file_reach(sp_con,
                       'Documents/Questions_db/Research_cycle_tracker.xlsx')
   
-  
+  database_map_table <- 
+    sp_get_file_reach(sp_con,
+                      'Documents/Questions_db/map_table.xlsx') %>% 
+    as.data.frame() %>% 
+    mutate_all( ~as.character(.))
   # available data block -----------------------------------------------------------
-  
   
   Refresh_needed <-
     reactiveVal(FALSE)  # Reactive value to track if button is clicked
@@ -1196,6 +1280,236 @@ server <- function(input, output, session) {
     }
   })
   
+  ############################################################################################################
+  #                                                     MAP                                                  #
+  ############################################################################################################
+  
+  ########## Country map in the Input data page ##########
+  output$country_choice <- renderLeaflet({
+    choose_country_map
+  })
+  
+  observeEvent(input$country_choice_shape_click, {
+
+    new_selected <- req(input$country_choice_shape_click)
+
+    isolate(old_selected <- rv$selected)
+    if(is_empty(rounds())){
+      
+    }else{
+      
+      if( !input$country_choice_shape_click$id %in% rv$oblasts){
+          rv$selected <- new_selected
+          rv$oblasts <- c(rv$oblasts,input$country_choice_shape_click$id)
+          oblast_iso <- ukraine %>% 
+            filter(ADM_PCODE %in% rv$oblasts)
+          
+          leafletProxy("country_choice") %>%
+            clearGroup("selection") %>%
+            addPolygons(data = oblast_iso,
+                        fillColor = "#EE5859",
+                        color = "#FFFFFF",
+                        fillOpacity = 1,
+                        label = ~oblast_iso$ADM_PCODE,
+                        group = "selection",
+                        layerId = ~oblast_iso$ADM_PCODE)
+      } else{
+        rv$selected <- new_selected
+        rv$oblasts <- setdiff(rv$oblasts,input$country_choice_shape_click$id)
+        oblast_iso <- ukraine %>% 
+          filter(!ADM_PCODE %in% rv$oblasts)
+        leafletProxy("country_choice") %>%
+          addPolygons(data = oblast_iso,
+                      fillColor  = "black",
+                      color = "#FFFFFF",
+                      weight= 1,
+                      fillOpacity = 0.8,
+                      highlightOptions = highlightOptions(
+                        fillColor = "#aaaaaa",
+                        color = "#aaaaaa",
+                        weight = 2,
+                        bringToFront = T
+                      ),
+                      label = ~oblast_iso$ADM_PCODE,
+                      layerId = ~oblast_iso$ADM_PCODE)
+      }
+    }
+  })
+  ########## Reactive values ##########
+  rv <- reactiveValues()
+  rv$selected <- NULL
+  rv$oblasts <- NULL
+  
+  ########## Project ID OUtput ##########
+  output$project_id <- renderUI({
+    project_table <- sp_get_file_reach(sp_con, 'Documents/Questions_db/Project_database.xlsx')
+    list_project <- project_table %>% 
+      as.data.frame() %>% 
+      pull(Project_ID) %>% unique
+    
+    selectInput("project_id_selected", "Select Project ID",
+                   choices = c(list_project))
+  })
+  rounds <- reactive({
+    project_table <- sp_get_file_reach(sp_con, 'Documents/Questions_db/Project_database.xlsx')
+    rounds <- project_table %>%
+      as.data.frame() %>%
+      filter(Project_ID == input$project_id_selected) %>% 
+      arrange(as.numeric(round_id)) %>% 
+      pull(round_id) %>%  unique
+  
+    map_table <- sp_get_file_reach(sp_con, 'Documents/Questions_db/map_table.xlsx') %>% 
+      filter(Project_ID == input$project_id_selected) %>% 
+      pull(round_id) %>% unique
+    
+    rounds <- setdiff(rounds,map_table)
+    return(rounds)
+})
+
+    output$round <- renderUI({
+      req(input$project_id_selected)
+      
+      
+      if(is_empty(rounds())) {
+        HTML(paste0("<p>All rounds for ",input$project_id_selected, " are uploaded"))
+      } else {
+        selectInput("round_selected", "Select Round",
+                       choices = c(rounds()))
+      }
+    })
+
+  
+
+  output$month <- renderUI({
+    req(input$project_id_selected,
+        input$round_selected)
+    months <- c("January", "February", "March", "April",
+               "May", "June", "July", "August",
+               "September", "October", "November", "December")
+    map_table <- sp_get_file_reach(sp_con, 'Documents/Questions_db/map_table.xlsx') %>% 
+      filter(Project_ID == input$project_id_selected) %>% 
+      pull(month) %>% unique
+    
+    months <- setdiff(months,map_table)
+    if(is_empty(rounds())) {
+    } else {
+    selectInput("month_selected", "Select Month",
+                   choices = months)
+    }
+  })
+  output$year <- renderUI({
+    req(input$project_id_selected,
+        input$round_selected,
+        input$month_selected)
+    years <- 2014:as.numeric(format(Sys.Date(),"%Y"))
+    map_table <- sp_get_file_reach(sp_con, 'Documents/Questions_db/map_table.xlsx')%>% 
+      filter(Project_ID == input$project_id_selected)%>%
+      distinct(year,month) %>% ## change to input$project_id_selected
+      group_by(year,month)%>%
+      summarise(n = n()) %>% 
+      filter(n == 12) %>% 
+      pull(year) %>% unique
+      print(input$round_selected)
+    years <- setdiff(years,map_table)
+    if(is_empty(rounds())) {
+    } else {
+    selectInput("year_selected", "Select Year",
+                   choices = years)
+    }
+  })
+  
+  map_table <- reactive({
+    req(input$project_id_selected,
+        input$round_selected,
+        input$month_selected,
+        input$year_selected,
+        rv$oblasts)
+    map_table <- data.frame(Project_ID = input$project_id_selected,
+                            round_id = input$round_selected,
+                            month = input$month_selected,
+                            year = input$year_selected,
+                            PCODE = rv$oblasts)
+    project_table <- sp_get_file_reach(sp_con, 'Documents/Questions_db/Project_database.xlsx') %>% 
+      select(Project_ID, round_id, sector,) %>% 
+      # mutate(round_id = as.numeric(round_id)) %>% 
+      distinct() %>% 
+      filter(sector != "",
+             !is.na(sector))
+    
+    assessment_name <- project_table() %>% 
+      select(Project_ID,Name) %>% 
+      rename("Assessment_Name" = Name)
+    map_table <- map_table %>% 
+      left_join(project_table, by = c("Project_ID","round_id")) %>% 
+      left_join(assessment_name, by = "Project_ID") %>% 
+      distinct()
+    
+    return(map_table)
+  }) 
+  database <- reactive({
+    map_table <- map_table()
+    database_map_table <- bind_rows(database_map_table,map_table) %>% distinct()
+    return(database_map_table)
+  })
+  observeEvent(input$upload, {
+    database <- database() 
+    map_table <- database %>% distinct()
+    assign("map_table",map_table,envir = globalenv())
+    if(nrow(map_table) > 0){
+
+
+      sp_post_file_reach(sp_con,
+                         'Documents/Questions_db',
+                         'map_table.xlsx')
+    }
+    new_selected <- req(input$country_choice_shape_click)
+    
+    isolate(old_selected <- rv$selected)
+    rv$selected <- new_selected
+    oblast_iso <- ukraine %>% 
+      filter(ADM_PCODE %in% rv$oblasts)
+    leafletProxy("country_choice")%>%
+      clearGroup("selection")  %>%
+      addPolygons(data = oblast_iso,
+                  fillColor  = "black",
+                  color = "#FFFFFF",
+                  weight= 1,
+                  fillOpacity = 0.8,
+                  highlightOptions = highlightOptions(
+                    fillColor = "#aaaaaa",
+                    color = "#aaaaaa",
+                    weight = 2,
+                    bringToFront = T
+                  ),
+                  label = ~oblast_iso$ADM_PCODE,
+                  layerId = ~oblast_iso$ADM_PCODE)
+    
+    showModal(
+      modalDialog(
+        title = "Data uploaded to the workspace",
+        easyClose = TRUE
+      )
+    )
+    rv$oblasts <- NULL
+    new_selected <- NULL
+    old_selected <- NULL
+  })
+  # output$test <- renderUI({
+  #   renderTable(map_table())
+  # })
+  
+  output$uploadBTN <- renderUI({
+    req(input$project_id_selected,
+        input$round_selected,
+        input$month_selected,
+        input$year_selected,
+        rv$oblasts)
+    if(is_empty(rounds())) {
+    }else{
+      actionButton("upload", "Upload info")
+    }
+  })
+
 }
 
 shinyApp(ui = ui, server = server)
