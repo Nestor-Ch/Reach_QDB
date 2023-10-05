@@ -46,7 +46,22 @@ Prior to the uploading process the user has to prepare the Kobo form. The only m
    - Sector 1
    - Sector 2
    - Sector 3
+
 To start the uploading process the user has to press the **Browse** button and select the appropriate Kobo form. When the user does this, on the backend the app will upload the form into a special folder in the Sharepoint folder dedicated to the app. After this, the user has to select the ID of the research cycle and the number of the survey round. After clicking this, the user can click the **"Build tables"** button to start the **Matching process**.
 
 ## Matching process
+
+The matching algorithm starts off with taking the uploaded and checking it against what already has been uploaded into the project database. If we have questions that are a 1 to 1 match with the ones we're uploading, those are removed from the further steps in the algorithm and assigned into a separate dataframe. This separate dataframe is matched with the Project ID to get the existing True_IDs for the matching questions.
+The algorithm also checks if the questions from the KOBO tool we're uploading aren't already present in the dataframe (to see if there were previous attempts to upload this round of questions), if this match is found, the matching questions are dropped from the matching process.
+
+After these checks are done, the algorithm takes the new unique questions from the uploaded KOBO tool and tries to match them to the questions already present in the QDB while, omitting the Project_ID & round_id combination that the user is uploading (i.e. one cannot match a question in a KOBO form to another question in that same KOBO form - this would just mean that we've asked the same question twice, and that's not useful).
+
+To match the new input to the existing questions in the Project_database, the algorithm starts off by cleaning the text label of the Kobo survey by removing all of the punctuation and stopwords. It then tries to match this clean column to the same clean column already existing in the Project_database by calculating a q-gram Jaccard distance of each item in the input text column to the text column in the Project_database. The tests conducted during testing showed that the algorithm yields the best results when parameter q = 2. For more information on [Jaccardian distance](https://www.statisticshowto.com/jaccard-index/) and [q-grams](https://profs.scienze.univr.it/~liptak/FundBA/slides/StringDistance2_6up.pdf) please check the linked materials.
+
+All matches where the distance is larger than 0.65 are dropped, and top 10 matches for each new column are selected for the final matching table (top 10 is the best case scenario, usually we're getting less than that). If there are no matches in the Project_database, the question is considered 'new'.
+
+
+
+
+
 
