@@ -59,7 +59,7 @@ load.label_colname <- function(data, language = "English") {
 }
 
 # data downloader
-sp_get_file_reach <- function (connection, rurl, destfile) {
+sp_get_file_reach <- function (connection, rurl, destfile, driver = ".xlsx") {
   # A reworked version of script by https://github.com/Shaunson26/sharepointR
   
   if (grepl(connection$site$site, rurl)) {
@@ -73,9 +73,8 @@ sp_get_file_reach <- function (connection, rurl, destfile) {
     destfile = basename(url)
   }
   
-  
-  
-  temp_file <- tempfile(fileext = ".xlsx")
+
+  temp_file <- tempfile(fileext = driver)
   
   response = httr::GET(
     url,
@@ -86,8 +85,11 @@ sp_get_file_reach <- function (connection, rurl, destfile) {
     config = connection$config,
     httr::write_disk(temp_file, overwrite = T)
   )
-  
+  if(driver == ".xlsx"){
   data <- openxlsx::read.xlsx(temp_file)
+  }else if(driver == ".json"){
+    data <- st_read(temp_file)
+  }
   return(data)
   if (response$all_headers[[1]]$status == 200) {
     message("File successfully downloaded to \"", destfile,
@@ -104,20 +106,23 @@ sp_get_file_reach <- function (connection, rurl, destfile) {
 
 # Data uploader
 
-sp_post_file_reach <- function(connection, rurl, file, write_tool = F, work_book_name =NULL) {
+sp_post_file_reach <- function(connection, rurl, file, write_tool = F, work_book_name =NULL,
+                               driver = '.xlsx') {
   # A reworked version of script by https://github.com/Shaunson26/sharepointR
   
-  file_env = gsub(".xlsx", '', file)
+  file_env = gsub(driver, '', file)
 
   # Save the data frame to an XLSX file in the temp folder
-  temp_file <- tempfile(fileext = ".xlsx")
+  temp_file <- tempfile(fileext = driver)
   
   # if the goal is to write the tool, the upload process is a bit different
   if(write_tool){
     openxlsx::saveWorkbook(work_book_name, temp_file, overwrite = TRUE)
     
-  }else{
+  }else if (driver == '.xlsx'){
     openxlsx::write.xlsx(get(file_env), temp_file)
+  }else if( driver == '.json'){
+    write_sf(get(file_env),temp_file, driver='GEOJSON')
   }
   
   # Remove site URI if present
@@ -180,6 +185,7 @@ sp_post_file_reach <- function(connection, rurl, file, write_tool = F, work_book
 }
 
 print('All functions have been added')
+
 
 
 # Define the Sharepoint connection --------------------------------------------------
