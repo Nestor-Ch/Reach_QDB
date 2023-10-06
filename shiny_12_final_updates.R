@@ -1,6 +1,6 @@
 
-
 library(shiny)
+library(shinyjs)
 library(DT)
 library(openxlsx)
 library(dplyr)
@@ -23,14 +23,12 @@ library(sf)
 # library(webshot)
 
 source("www/src/STX_Utils_DB_app.R")
-rm(list=ls())
 # webshot::install_phantomjs(force = T)
 options(shiny.maxRequestSize = 30 * 1024 ^ 2,
         rsconnect.max.bundle.files = 5145728000)
 
 ukraine <- st_read("www/shapefile/Ukraine_Admin1.shp") %>% 
   st_simplify(preserveTopology = T, dTolerance = 3000)
-print(ukraine$ADM_NAME)
 choose_country_map <- leaflet::leaflet(
   options = leafletOptions(
     attributionControl = F,
@@ -56,10 +54,21 @@ choose_country_map <- leaflet::leaflet(
 # --------------- Shiny itself ---------------------
 
 # set up the UI
-ui <- fluidPage(
+ui <- function(req) { fluidPage(
+  useShinyjs(),
   titlePanel("Interactive QNR database: IMPACT Ukraine"),
   # add the possibility of an overflow of dropdown options for the table with table-container ID
   tags$head(
+    # tags$script(
+    #   # this thing allows us to update the app when a certain button is clicked
+    #   HTML("
+    #        function doReload(tab_index) {
+    #           let loc = window.location;
+    #           let params = new URLSearchParams(loc.search);
+    #           params.set('tab_index', tab_index);
+    #           loc.replace(loc.origin + loc.pathname + '?' + params.toString());
+    #        }"), type ="text/javascript"
+    # ),
     tags$style(HTML(
       "
         #table-container {
@@ -105,7 +114,7 @@ ui <- fluidPage(
     #                     ')
   ),
   hr(),
-  tabsetPanel(
+  tabsetPanel(id = 'Tabpanel',
     tabPanel("Available data",
              sidebarLayout(
                sidebarPanel(
@@ -259,6 +268,8 @@ ui <- fluidPage(
     )
   )
 )
+}
+
 server <- function(input, output, session) {
   # Block where we get our data from the server
   
@@ -268,13 +279,7 @@ server <- function(input, output, session) {
   database_research_cycle <-
     sp_get_file_reach(sp_con,
                       'Documents/Questions_db/Research_cycle_tracker.xlsx')
-  
-  database_map_table <- 
-    sp_get_file_reach(sp_con,
-                      'Documents/Questions_db/map_table.xlsx') %>% 
-    as.data.frame() %>% 
-    mutate_all( ~as.character(.))
-  # available data block -----------------------------------------------------------
+    # available data block -----------------------------------------------------------
   
   Refresh_needed <-
     reactiveVal(FALSE)  # Reactive value to track if button is clicked
@@ -1011,7 +1016,6 @@ server <- function(input, output, session) {
 
     
   }else{
-    print(repeated_qs)
     Project_database <<- rbind(repeated_qs,database_proj)
     
     
@@ -1342,6 +1346,9 @@ server <- function(input, output, session) {
   
   ########## Project ID OUtput ##########
   output$project_id <- renderUI({
+    # bookmark this stage of the session
+    session$doBookmark()
+    
     project_table <- sp_get_file_reach(sp_con, 'Documents/Questions_db/Project_database.xlsx')
     list_project <- project_table %>% 
       as.data.frame() %>% 
@@ -1354,17 +1361,39 @@ server <- function(input, output, session) {
     project_table <- sp_get_file_reach(sp_con, 'Documents/Questions_db/Project_database.xlsx')
     rounds <- project_table %>%
       as.data.frame() %>%
-      filter(Project_ID == input$project_id_selected) %>% 
+      filter(Project_ID == input$project_id_selected) %>% #'UKR2206B'
       arrange(as.numeric(round_id)) %>% 
       pull(round_id) %>%  unique
   
-    map_table <- sp_get_file_reach(sp_con, 'Documents/Questions_db/map_table.xlsx') %>% 
-      filter(Project_ID == input$project_id_selected) %>% 
+    map_table <- sp_get_file_reach(sp_con, 'Documents/Questions_db/map_table.json',driver = '.json') %>% 
+      filter(Project_ID == input$project_id_selected) %>% #input$project_id_selected
       pull(round_id) %>% unique
-    
     rounds <- setdiff(rounds,map_table)
     return(rounds)
+
 })
+  
+  # this bit allows the user to return to the 'Geographical Input' tab after clicking the update button
+  # it takes too long so I'm not using it
+  # observe({
+  #   params <- parseQueryString(session$clientData$url_search)
+  #   if ("tab_index" %in% names(params)) {
+  #     updateTabsetPanel(session, "Tabpanel", selected = params$tab_index)   
+  #   }
+  # })
+  
+  # this bit of Java reloads the page
+  observeEvent(input$upload, {
+    isolate(shinyjs::runjs("
+    location.reload(true);
+  "))
+    
+  })
+  # this bit updates the client browser to the bookmarked state
+  onBookmarked(function(url) {
+    updateQueryString(url, mode = 'replace')
+  })
+  
 
     output$round <- renderUI({
       req(input$project_id_selected)
@@ -1386,7 +1415,8 @@ server <- function(input, output, session) {
     months <- c("January", "February", "March", "April",
                "May", "June", "July", "August",
                "September", "October", "November", "December")
-    map_table <- sp_get_file_reach(sp_con, 'Documents/Questions_db/map_table.xlsx') %>% 
+    
+    map_table <- sp_get_file_reach(sp_con, 'Documents/Questions_db/map_table.json',driver = '.json') %>% 
       filter(Project_ID == input$project_id_selected) %>% 
       pull(month) %>% unique
     
@@ -1402,14 +1432,13 @@ server <- function(input, output, session) {
         input$round_selected,
         input$month_selected)
     years <- 2014:as.numeric(format(Sys.Date(),"%Y"))
-    map_table <- sp_get_file_reach(sp_con, 'Documents/Questions_db/map_table.xlsx')%>% 
+    map_table <- sp_get_file_reach(sp_con, 'Documents/Questions_db/map_table.json',driver = '.json')%>% 
       filter(Project_ID == input$project_id_selected)%>%
       distinct(year,month) %>% ## change to input$project_id_selected
       group_by(year,month)%>%
       summarise(n = n()) %>% 
       filter(n == 12) %>% 
       pull(year) %>% unique
-      print(input$round_selected)
     years <- setdiff(years,map_table)
     if(is_empty(rounds())) {
     } else {
@@ -1429,6 +1458,7 @@ server <- function(input, output, session) {
                             month = input$month_selected,
                             year = input$year_selected,
                             PCODE = rv$oblasts)
+
     project_table <- sp_get_file_reach(sp_con, 'Documents/Questions_db/Project_database.xlsx') %>% 
       select(Project_ID, round_id, sector,) %>% 
       # mutate(round_id = as.numeric(round_id)) %>% 
@@ -1442,12 +1472,20 @@ server <- function(input, output, session) {
     map_table <- map_table %>% 
       left_join(project_table, by = c("Project_ID","round_id")) %>% 
       left_join(assessment_name, by = "Project_ID") %>% 
+      left_join(ukraine %>% 
+                  select(ADM_PCODE, geometry), by = c('PCODE'='ADM_PCODE')) %>% 
       distinct()
     
     return(map_table)
   }) 
   database <- reactive({
     map_table <- map_table()
+    
+    database_map_table <- 
+      sp_get_file_reach(sp_con,
+                        'Documents/Questions_db/map_table.json', driver = '.json') %>% 
+      as.data.frame()
+    
     database_map_table <- bind_rows(database_map_table,map_table) %>% distinct()
     return(database_map_table)
   })
@@ -1457,10 +1495,9 @@ server <- function(input, output, session) {
     assign("map_table",map_table,envir = globalenv())
     if(nrow(map_table) > 0){
 
-
-      sp_post_file_reach(sp_con,
+      isolate(sp_post_file_reach(sp_con,
                          'Documents/Questions_db',
-                         'map_table.xlsx')
+                         'map_table.json',driver = '.json'))
     }
     new_selected <- req(input$country_choice_shape_click)
     
@@ -1484,16 +1521,20 @@ server <- function(input, output, session) {
                   label = ~oblast_iso$ADM_PCODE,
                   layerId = ~oblast_iso$ADM_PCODE)
     
-    showModal(
-      modalDialog(
-        title = "Data uploaded to the workspace",
-        easyClose = TRUE
-      )
-    )
+    # showModal(
+    #   modalDialog(
+    #     title = "Data uploaded to the workspace",
+    #     easyClose = TRUE
+    #   )
+    # )
     rv$oblasts <- NULL
     new_selected <- NULL
     old_selected <- NULL
+    
   })
+  
+
+  
   # output$test <- renderUI({
   #   renderTable(map_table())
   # })
@@ -1506,10 +1547,12 @@ server <- function(input, output, session) {
         rv$oblasts)
     if(is_empty(rounds())) {
     }else{
-      actionButton("upload", "Upload info")
+      isolate(actionButton("upload", "Upload info", 
+                   # onclick = "doReload('Geographical Input')"
+                   ))
     }
   })
 
 }
 
-shinyApp(ui = ui, server = server)
+shinyApp(ui = ui, server = server, enableBookmarking = "url")
