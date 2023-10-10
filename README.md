@@ -43,9 +43,22 @@ To upload the new data the user has to open the **Data Uploader** tab of the app
 <img width="514" alt="image" src="https://github.com/Nestor-Ch/Reach_QDB/assets/132923140/a8d16243-965e-40e9-91ae-1ee910596497">
 
 Prior to the uploading process the user has to prepare the Kobo form. The only manual input into the form that is needed from the side of the user is creating and filling the **sector** column in the **survey** sheet of the kobo form. This column has to describe what sector does each question in the survey correspond to. This sector should be one of the following:
-   - Sector 1
-   - Sector 2
-   - Sector 3
+   - WASH
+   - AAP
+   - CCCM
+   - Shelter & NFI
+   - Education
+   - Food Security & Livelihoods
+   - Health
+   - Displacement
+   - Protection
+   - Nutrition
+   - Emergency Telecommunications
+   - Logistics
+
+If the sector in your KOBO tool doesn't match one of these exactly, it will be left blank in the Final QDB, which is fine for Demographic variables and general ones that are needed for backend KOBO functionalities. 
+
+**If your survey sheet has no sector column or if all entries are left blank, the tool won't allow you to proceed.**
 
 To start the uploading process the user has to press the **Browse** button and select the appropriate Kobo form. When the user does this, on the backend the app will upload the form into a special folder in the Sharepoint folder dedicated to the app. After this, the user has to select the ID of the research cycle and the number of the survey round. After clicking this, the user can click the **"Build tables"** button to start the **Matching process**.
 
