@@ -1,4 +1,3 @@
-
 library(shiny)
 library(shinyjs)
 library(DT)
@@ -405,6 +404,9 @@ server <- function(input, output, session) {
     
     names(data) <- tolower(names(data))
     
+
+    # I am here --------------------------------------
+    
     if(!'sector' %in% names(data)){
       
       showModal(
@@ -415,7 +417,61 @@ server <- function(input, output, session) {
           easyClose = TRUE
         )
       )
+      
+      output$final_table <- NULL
+      
     }
+    # check if the correct sector names were assigned
+    if('sector' %in% names(data) & 
+       any(! (unique((data$sector)) %in% c('WASH','AAP','CCCM','Shelter and NFI','Education',
+                                           'Food Security and Livelihoods','Health','Displacement',
+                                           'Protection','Nutrition','Emergency Telecommunications',
+                                           'Logistics', NA))
+       )
+       ){
+      # get the list of the wrong sectors
+      wrong_sectors <- setdiff(
+        unique(data$sector), c('WASH','AAP','CCCM','Shelter and NFI','Education',
+                               'Food Security and Livelihoods','Health','Displacement',
+                               'Protection','Nutrition','Emergency Telecommunications',
+                               'Logistics', NA)
+      )
+      # drop them from the dataframe
+      data <- data %>% 
+        mutate(sector = ifelse(sector %in% wrong_sectors, NA, sector))
+      
+      
+      # if all are na then stop
+      if (length(unique(data$sector))==1 &
+          all(is.na(unique(data$sector)))){
+        
+        showModal(
+          modalDialog(
+            title = "Wrong sectors entered",
+            paste0("All of the sectors you've entered into your file are wrong and don't exist. Please try again"),
+            footer = NULL,
+            easyClose = TRUE
+          )
+        )
+        
+        output$final_table <- NULL
+
+      }else{
+        # if only a few were wrong
+      showModal(
+        modalDialog(
+          title = "Wrong sectors entered",
+          paste0("The file uploaded has the wrong sector names entered, the questions with 
+                 following sector names will be assigned a blank sector: ", paste0(wrong_sectors, collapse=', ')),
+          footer = NULL,
+          easyClose = TRUE
+        )
+      )
+      }
+      
+    }
+    
+    if('sector' %in% names(data)){
 
     data <- data %>% 
       select(sector,name, label_english, list_name, type,label_ukrainian,label_russian) %>%
@@ -436,9 +492,21 @@ server <- function(input, output, session) {
           )
       ) %>%
       select(-list_name)
+    }
     
   })
   
+  sector_selected <- reactive({
+    req(myData1())
+    
+    data <- myData1()
+    if(all(is.na(data$sector)) || 
+       !('sector' %in% names(data))){
+      return(TRUE)
+    }else{return(FALSE)}
+  })
+  
+
   database_research_cycle <-
     sp_get_file_reach(sp_con,
                       'Documents/Questions_db/Research_cycle_tracker.xlsx')
@@ -498,6 +566,7 @@ server <- function(input, output, session) {
   })
   
   # clean your data ---------------------------
+
   
   dataReady <-
     reactiveVal(FALSE)  # Reactive value to track if button is clicked
@@ -510,9 +579,10 @@ server <- function(input, output, session) {
     data <-
       myData1()  # Access the uploaded dataset from myData1 reactive object
     
-    if (is.null(data) || !dataReady())
+    if (is.null(data) || !dataReady() || sector_selected() ) # CHANGE A THING HERE ---------------------
       # Check if data is NULL
       return(NULL)
+    print(sector_selected())
     #Cleaning the frame
     new_input <-
       column_cleaner(data, name = 'name', label = 'label_english') %>%
@@ -748,8 +818,8 @@ server <- function(input, output, session) {
     
     data <- emptyDT()
     
+    if(!sector_selected()){
     cnt <-   sum(data$database_label_clean %in% 'new')
-    
     showModal(
       modalDialog(
         title = "Data uploaded to the workspace",
@@ -764,7 +834,7 @@ server <- function(input, output, session) {
         footer = NULL,
         easyClose = TRUE
       )
-    )
+    )}
   })
   
   # empty display and click tracking ---------------------------
@@ -877,7 +947,7 @@ server <- function(input, output, session) {
   
   # # Save the table when the button is clicked
   observeEvent(input$saveButton, {
-
+# logical test here ----------------------------------------------------
       # get the merger_column for the final db
     data_for_merging <- myData1_clean() %>%
       select(upload_label,
