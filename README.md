@@ -46,9 +46,9 @@ Prior to the uploading process the user has to prepare the Kobo form. The only m
    - WASH
    - AAP
    - CCCM
-   - Shelter & NFI
+   - Shelter and NFI
    - Education
-   - Food Security & Livelihoods
+   - Food Security and Livelihoods
    - Health
    - Displacement
    - Protection
