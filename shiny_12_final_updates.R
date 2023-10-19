@@ -33,19 +33,19 @@ choose_country_map <- leaflet::leaflet(
     attributionControl = F,
     zoomControl = F,
     minZoom = 6, maxZoom = 6,
-    )) %>%
+  )) %>%
   leaflet::addProviderTiles(providers$CartoDB.PositronNoLabels) %>%
   leaflet::addPolygons(data= ukraine,
-                     fillColor  = "black",
-                     color = "#FFFFFF",
-                     weight= 1,
-                     fillOpacity = 0.8,
-                     highlightOptions = highlightOptions(
-                       fillColor = "#aaaaaa",
-                       color = "#aaaaaa",
-                       weight = 2,
-                       bringToFront = T
-                     ),
+                       fillColor  = "black",
+                       color = "#FFFFFF",
+                       weight= 1,
+                       fillOpacity = 0.8,
+                       highlightOptions = highlightOptions(
+                         fillColor = "#aaaaaa",
+                         color = "#aaaaaa",
+                         weight = 2,
+                         bringToFront = T
+                       ),
                        label = ~ukraine$ADM_NAME,
                        layerId = ~ukraine$ADM_PCODE)%>%
   setView(lng = 31.14869, lat = 48.5, zoom = 6) 
@@ -81,23 +81,23 @@ ui <- function(req) { fluidPage(
     HTML(
       '<a style="padding-left:10px;" class="app-title" href= "https://www.reach-initiative.org/" target="_blank"><img src="reach.jpg" height = "50"></a><span class="app-description" style="font-size: 16px; color: #FFFFFF"><strong>Database_test</strong></span>'
     ),
-  #   ,
-  #   tags$script("
-  #   $(document).ready(function() {    
-  #     setTimeout(function() {
-  # 
-  #       var map = $('#country_choice').data('leaflet-map');            
-  #       function disableZoom(e) {map.scrollWheelZoom.disable();}
-  # 
-  #       $(document).on('mousemove', '*', disableZoom);
-  # 
-  #       map.on('click', function() {
-  #         $(document).off('mousemove', '*', disableZoom);
-  #         map.scrollWheelZoom.enable();
-  #       });
-  #     }, 100);
-  #   })
-  # "),
+    #   ,
+    #   tags$script("
+    #   $(document).ready(function() {    
+    #     setTimeout(function() {
+    # 
+    #       var map = $('#country_choice').data('leaflet-map');            
+    #       function disableZoom(e) {map.scrollWheelZoom.disable();}
+    # 
+    #       $(document).on('mousemove', '*', disableZoom);
+    # 
+    #       map.on('click', function() {
+    #         $(document).off('mousemove', '*', disableZoom);
+    #         map.scrollWheelZoom.enable();
+    #       });
+    #     }, 100);
+    #   })
+    # "),
     # tags$script('
     #                     var dimension = [0, 0];
     #                     $(document).on("shiny:connected", function(e) {
@@ -114,157 +114,158 @@ ui <- function(req) { fluidPage(
   ),
   hr(),
   tabsetPanel(id = 'Tabpanel',
-    tabPanel("Available data",
-             sidebarLayout(
-               sidebarPanel(
-                 span("What this is", style = "font-weight: bold;"),
-                 div(style = "height: 20px;"),
-                 # Empty space with CSS styling
-                 span(
-                   "This page provides a brief description of all available data in the database.
+              tabPanel("Available data",
+                       sidebarLayout(
+                         sidebarPanel(
+                           span("What this is", style = "font-weight: bold;"),
+                           div(style = "height: 20px;"),
+                           # Empty space with CSS styling
+                           span(
+                             "This page provides a brief description of all available data in the database.
                You can see the projects uploaded to the database as well as the number of questions in each project."
-                 ),
-                 div(style = "height: 20px;"),
-                 # Empty space with CSS styling
-                 actionButton("update_projects", "Refresh the table"),
-                 div(style = "height: 10px;"),
-                 width = 3
-               ),
-               mainPanel("", DT::dataTableOutput('table2'))
-             )),
-    tabPanel("Data uploader",
-             sidebarLayout(
-               sidebarPanel(
-                 fileInput('Workflow_table', 'Choose Excel File', accept = c('.xlsx', '.xls')),
-                 tags$hr(style = "border: 1px solid black;"),
-                 span("What is the ID of this project?",
-                      style = "font-weight: bold;"),
-                 div(style = "height: 20px;"),
-                 uiOutput('newNameInput'),
-                 div(style = "height: 10px;"),
-                 selectInput(
-                   'round_id',
-                   'What round of the assessment are you uploading?',
-                   choices = 1:30
-                 ),
-                 div(style = "height: 20px;"),
-                 span(
-                   "Once you've uploaded the kobo tool, click this button to build the table",
-                   style = "font-weight: bold;"
-                 ),
-                 # Empty space with CSS styling
-                 actionButton("buildTables", "Build Tables"),
-                 div(style = "height: 10px;"),
-                 # Button to trigger table creation
-                 selectInput(
-                   'newType',
-                   'Was this a household or individual assessment?',
-                   choices = c('Household', 'Individual','Settlement')
-                 ),
-                 tags$hr(style = "border: 1px solid black;"),
-                 div(style = "height: 10px;"),
-                 # Empty space with CSS styling
-                 span("Apply changes to the Database", style = "font-weight: bold;"),
-                 div(style = "height: 10px;"),
-                 # Empty space with CSS styling
-                 actionButton("saveButton", "Save Table"),
-                 width = 3
-               ),
-               mainPanel(# Add the table ID so that we can add overflow to it
-                 div(
-                   # Add the table ID so that we can add overflow to it
-                   div(id = "table-container",
-                       rHandsontableOutput("final_table"))
-                 ))
-             )),
-    tabPanel(
-      "Question comparison",
-      div(
-        class = "container-fluid",
-        div(
-          class = "row",
-          style = "margin-left: 20px;",
-          style = "margin-top: 20px;",
-          div(
-            class = "col-md-4",
-            span("What this is", style = "font-weight: bold;"),
-            span(
-              "This page allows the user to browse across available questions in the DB. You can also check whether the questions in your project match questions in other available projects."
-            ),
-            div(style = "height: 10px;"),
-            span(
-              "Click the button below to refresh the table to its latest version from the DB"
-            ),
-            div(style = "height: 10px;"),
-            actionButton("Download_data", "Refresh data"),
-            div(style = "height: 10px;")
-          ),
-          div(
-            class = "col-md-4",
-            align = "center",
-            span(
-              "This section allows you to select a survey that interests you and view all other surveys that asked comparable questions"
-            ),
-            uiOutput('Comparison_input'),
-            div(style = "height: 5px;"),
-            actionButton("Filter_tables", "Filter tables")
-          ),
-          div(
-            class = "col-md-4",
-            align = "center",
-            span("Click the button below to reset the tables to their initial form."),
-            div(style = "height: 10px;"),
-            actionButton("Reset_data", "Reset tables")
-          )
-        ),
-        div(
-          class = "row",
-          style = "margin-left: 20px;",
-          div(class = "col-md-12",
-              DTOutput('table3'))
-        )
-      )
-    ),
-    tabPanel(
-      "Browse logical checks",
-      div(
-        class = "container-fluid",
-        div(
-          class = "row",
-          style = "margin-left: 20px;",
-          style = "margin-top: 20px;",
-          div(
-            class = "col-md-12",
-            align = "center",
-            span("What this is", style = "font-weight: bold;"),
-            span(
-              "This page will allow the user to browse across logical checks applied in different surveys. You will be able to check whether questions in your survey have any standard logical checks"
-            ),
-            div(style = "height: 10px;"),
-            span(
-              "Currently under construction"
-            ),
-
-          )
-        )
-      )
-    ),
-    tabPanel(
-      "Geographical Input",
-      sidebarPanel(
-        uiOutput("project_id"),
-        uiOutput("round"),
-        uiOutput("month"),
-        uiOutput("year"),
-        uiOutput("uploadBTN")
-
-      ),
-      mainPanel(
-        div(
-          leafletOutput("country_choice", height = '600px')
-        )
-        )
-    )
+                           ),
+                           div(style = "height: 20px;"),
+                           # Empty space with CSS styling
+                           actionButton("update_projects", "Refresh the table"),
+                           div(style = "height: 10px;"),
+                           width = 3
+                         ),
+                         mainPanel("", DT::dataTableOutput('table2'))
+                       )),
+              tabPanel("Data uploader",
+                       sidebarLayout(
+                         sidebarPanel(
+                           fileInput('Workflow_table', 'Choose Excel File', accept = c('.xlsx', '.xls')),
+                           tags$hr(style = "border: 1px solid black;"),
+                           span("What is the ID of this project?",
+                                style = "font-weight: bold;"),
+                           div(style = "height: 20px;"),
+                           uiOutput('newNameInput'),
+                           div(style = "height: 10px;"),
+                           selectInput(
+                             'round_id',
+                             'What round of the assessment are you uploading?',
+                             choices = 1:30
+                           ),
+                           div(style = "height: 10px;"),
+                           # Button to trigger table creation
+                           selectInput(
+                             'newType',
+                             'Was this a household or individual assessment?',
+                             choices = c('Household', 'Individual','Settlement', 'Customer', 'Retailer')
+                           ),
+                           div(style = "height: 20px;"),
+                           span(
+                             "Once you've uploaded the kobo tool, click this button to build the table",
+                             style = "font-weight: bold;"
+                           ),
+                           div(style = "height: 10px;"),
+                           # Empty space with CSS styling
+                           actionButton("buildTables", "Build Tables"),
+                           tags$hr(style = "border: 1px solid black;"),
+                           div(style = "height: 10px;"),
+                           # Empty space with CSS styling
+                           span("Apply changes to the Database", style = "font-weight: bold;"),
+                           div(style = "height: 10px;"),
+                           # Empty space with CSS styling
+                           actionButton("saveButton", "Save Table"),
+                           width = 3
+                         ),
+                         mainPanel(# Add the table ID so that we can add overflow to it
+                           div(
+                             # Add the table ID so that we can add overflow to it
+                             div(id = "table-container",
+                                 rHandsontableOutput("final_table"))
+                           ))
+                       )),
+              tabPanel(
+                "Question comparison",
+                div(
+                  class = "container-fluid",
+                  div(
+                    class = "row",
+                    style = "margin-left: 20px;",
+                    style = "margin-top: 20px;",
+                    div(
+                      class = "col-md-4",
+                      span("What this is", style = "font-weight: bold;"),
+                      span(
+                        "This page allows the user to browse across available questions in the DB. You can also check whether the questions in your project match questions in other available projects."
+                      ),
+                      div(style = "height: 10px;"),
+                      span(
+                        "Click the button below to refresh the table to its latest version from the DB"
+                      ),
+                      div(style = "height: 10px;"),
+                      actionButton("Download_data", "Refresh data"),
+                      div(style = "height: 10px;")
+                    ),
+                    div(
+                      class = "col-md-4",
+                      align = "center",
+                      span(
+                        "This section allows you to select a survey that interests you and view all other surveys that asked comparable questions"
+                      ),
+                      uiOutput('Comparison_input'),
+                      div(style = "height: 5px;"),
+                      actionButton("Filter_tables", "Filter tables")
+                    ),
+                    div(
+                      class = "col-md-4",
+                      align = "center",
+                      span("Click the button below to reset the tables to their initial form."),
+                      div(style = "height: 10px;"),
+                      actionButton("Reset_data", "Reset tables")
+                    )
+                  ),
+                  div(
+                    class = "row",
+                    style = "margin-left: 20px;",
+                    div(class = "col-md-12",
+                        DTOutput('table3'))
+                  )
+                )
+              ),
+              tabPanel(
+                "Browse logical checks",
+                div(
+                  class = "container-fluid",
+                  div(
+                    class = "row",
+                    style = "margin-left: 20px;",
+                    style = "margin-top: 20px;",
+                    div(
+                      class = "col-md-12",
+                      align = "center",
+                      span("What this is", style = "font-weight: bold;"),
+                      span(
+                        "This page will allow the user to browse across logical checks applied in different surveys. You will be able to check whether questions in your survey have any standard logical checks"
+                      ),
+                      div(style = "height: 10px;"),
+                      span(
+                        "Currently under construction"
+                      ),
+                      
+                    )
+                  )
+                )
+              ),
+              tabPanel(
+                "Geographical Input",
+                sidebarPanel(
+                  uiOutput("project_id"),
+                  uiOutput("round"),
+                  uiOutput("month"),
+                  uiOutput("year"),
+                  uiOutput("uploadBTN")
+                  
+                ),
+                mainPanel(
+                  div(
+                    leafletOutput("country_choice", height = '600px')
+                  )
+                )
+              )
   )
 )
 }
@@ -278,7 +279,7 @@ server <- function(input, output, session) {
   database_research_cycle <-
     sp_get_file_reach(sp_con,
                       'Documents/Questions_db/Research_cycle_tracker.xlsx')
-    # available data block -----------------------------------------------------------
+  # available data block -----------------------------------------------------------
   
   Refresh_needed <-
     reactiveVal(FALSE)  # Reactive value to track if button is clicked
@@ -330,7 +331,7 @@ server <- function(input, output, session) {
         inner_join(database_proj_rounds) %>% 
         relocate(Project_ID,Name,rounds,N_questions)
     }
-  
+    
   })
   
   
@@ -388,7 +389,7 @@ server <- function(input, output, session) {
           name
         )
       )
-
+    
     # rename the label column, filter the needed types and get the needed columns
     data <- select(data, all_of(cols_to_keep)) %>%
       rename(label_english = !!sym(label_colname[1]),
@@ -404,8 +405,6 @@ server <- function(input, output, session) {
     
     names(data) <- tolower(names(data))
     
-
-    # I am here --------------------------------------
     
     if(!'sector' %in% names(data)){
       
@@ -428,7 +427,7 @@ server <- function(input, output, session) {
                                            'Protection','Nutrition','Emergency Telecommunications',
                                            'Logistics', NA))
        )
-       ){
+    ){
       # get the list of the wrong sectors
       wrong_sectors <- setdiff(
         unique(data$sector), c('WASH','AAP','CCCM','Shelter and NFI','Education',
@@ -455,43 +454,43 @@ server <- function(input, output, session) {
         )
         
         output$final_table <- NULL
-
+        
       }else{
         # if only a few were wrong
-      showModal(
-        modalDialog(
-          title = "Wrong sectors entered",
-          paste0("The file uploaded has the wrong sector names entered, the questions with 
+        showModal(
+          modalDialog(
+            title = "Wrong sectors entered",
+            paste0("The file uploaded has the wrong sector names entered, the questions with 
                  following sector names will be assigned a blank sector: ", paste0(wrong_sectors, collapse=', ')),
-          footer = NULL,
-          easyClose = TRUE
+            footer = NULL,
+            easyClose = TRUE
+          )
         )
-      )
       }
       
     }
     
     if('sector' %in% names(data)){
-
-    data <- data %>% 
-      select(sector,name, label_english, list_name, type,label_ukrainian,label_russian) %>%
-      mutate(sector = gsub('\\&|\\&amp;','and',sector)) %>% 
-      distinct() %>%
-      # get the choices
-      left_join(
-        read.xlsx(inFile$datapath, sheet = 'choices') %>%
-          rename(label_english_choices = !!sym(label_colname[1]),
-                 label_ukrainian_choices = !!sym(label_colname[2]),
-                 label_russian_choices = !!sym(label_colname[3])) %>%
-          select(label_english_choices,label_ukrainian_choices,label_russian_choices, list_name) %>%
-          group_by(list_name) %>%
-          summarise(
-            label_english_choices = paste0(label_english_choices, collapse = ' | \n '),
-            label_ukrainian_choices =paste0(label_ukrainian_choices, collapse = ' | \n '),
-            label_russian_choices = paste0(label_russian_choices, collapse = ' | \n ')
-          )
-      ) %>%
-      select(-list_name)
+      
+      data <- data %>% 
+        select(sector,name, label_english, list_name, type,label_ukrainian,label_russian) %>%
+        mutate(sector = gsub('\\&|\\&amp;','and',sector)) %>% 
+        distinct() %>%
+        # get the choices
+        left_join(
+          read.xlsx(inFile$datapath, sheet = 'choices') %>%
+            rename(label_english_choices = !!sym(label_colname[1]),
+                   label_ukrainian_choices = !!sym(label_colname[2]),
+                   label_russian_choices = !!sym(label_colname[3])) %>%
+            select(label_english_choices,label_ukrainian_choices,label_russian_choices, list_name) %>%
+            group_by(list_name) %>%
+            summarise(
+              label_english_choices = paste0(label_english_choices, collapse = ' | \n '),
+              label_ukrainian_choices =paste0(label_ukrainian_choices, collapse = ' | \n '),
+              label_russian_choices = paste0(label_russian_choices, collapse = ' | \n ')
+            )
+        ) %>%
+        select(-list_name)
     }
     
   })
@@ -506,7 +505,7 @@ server <- function(input, output, session) {
     }else{return(FALSE)}
   })
   
-
+  
   database_research_cycle <-
     sp_get_file_reach(sp_con,
                       'Documents/Questions_db/Research_cycle_tracker.xlsx')
@@ -515,21 +514,14 @@ server <- function(input, output, session) {
   # get the list of survey IDs for the user to select
   # survey id
   assessment_value <- reactive({
-    inFile <- input$Workflow_table
-    if (is.null(inFile))
-      # Only read data if button is clicked
-      return(NULL)
-    data <- read.xlsx(inFile$datapath, sheet = 'settings')
-    txt <-
-      c(data$form_title,
-        unique(database_research_cycle$Research_cycle_ID))
+    txt <- unique(database_research_cycle$Research_cycle_ID)
     txt
     
   })
   
   # Render the text input field with the default value
   output$newNameInput <- renderUI({
-    choices <- assessment_value() # not this, something else    ---------------  ---------------
+    choices <- assessment_value() 
     selectInput("newName",
                 "Select an option:",
                 choices = choices,
@@ -541,9 +533,9 @@ server <- function(input, output, session) {
   
   
   observeEvent(input$Workflow_table, {
-
+    
     inFile <- input$Workflow_table
-
+    
     if (is.null(inFile))
       # Only read data if button is clicked
       return(NULL)
@@ -555,18 +547,18 @@ server <- function(input, output, session) {
       openxlsx::addWorksheet(wb , sheet)
       openxlsx::writeData(wb, sheet, data,startRow = 1, startCol = 1)
     }
-
-
+    
+    
     sp_post_file_reach(sp_con,
                        'Documents/Questions_db/Tools',
                        input$Workflow_table$name,
                        write_tool = T,
                        work_book_name = wb)
-
+    
   })
   
   # clean your data ---------------------------
-
+  
   
   dataReady <-
     reactiveVal(FALSE)  # Reactive value to track if button is clicked
@@ -580,13 +572,15 @@ server <- function(input, output, session) {
       myData1()  # Access the uploaded dataset from myData1 reactive object
     
     if (is.null(data) || !dataReady() || sector_selected() ) # CHANGE A THING HERE ---------------------
-      # Check if data is NULL
-      return(NULL)
+    # Check if data is NULL
+    return(NULL)
     print(sector_selected())
     #Cleaning the frame
     new_input <-
       column_cleaner(data, name = 'name', label = 'label_english') %>%
       select(-label_english_choices)
+    
+  
     
     # check if the project db has some of the questions
     
@@ -595,6 +589,8 @@ server <- function(input, output, session) {
     
     round_id_survey <-
       input$round_id # get the updated round of the survey
+    
+    type_id_survey <- input$newType # get the type of the survey
     
     
     database_proj <-
@@ -617,81 +613,86 @@ server <- function(input, output, session) {
       new_input <-
         new_input[new_input$text2 %in% data_cl_diff$text2,]
       
-      # Get the project database without the project you're already uploading (this is the only one we don't need for the set difference operations)
+      # Get the project database without the project you're already uploading
+      # we will filter out questions that have already been uploaded in other surveys
       database_proj_union <- database_proj %>% 
         filter(!(Project_ID == updatedName &
-               round_id == round_id_survey)) %>%  # important, the comparison db has to omit the round that you're uploading
+                   round_id == round_id_survey &
+                   survey_type == type_id_survey)) %>%  # important, the comparison db has to omit the round that you're uploading
         select(database_label_clean, question_type)%>% 
         rename(text2 = database_label_clean,
                type = question_type)
       
+      
+      # get the rows of the survey that the user is currently uploading (if such exist)
       # Get the project database with only the project you're already uploading - this will help filter out cases where 2 rounds have identical questions
       database_proj_intersection <- database_proj %>% 
         filter((Project_ID == updatedName &
-                   round_id == round_id_survey)) %>%  # important, the comparison db has to omit the round that you're uploading
+                  round_id == round_id_survey &
+                  survey_type == type_id_survey)) %>%  # important, the comparison db has to omit the round that you're uploading
         select(database_label_clean, question_type)%>% 
         rename(text2 = database_label_clean,
                type = question_type)
-
-
+      
+      
       data_cl_union <- intersect(database_proj_union,data_cl) # get the cases where the uploaded data matches with data outside Proj_id + round_id you're uploading
       
       data_cl_union <- setdiff(data_cl_union,database_proj_intersection) # remove cases where the user has already uploaded data for this round into the DB
-
+      
       if (nrow(data_cl_union)>0){
-      
-      # Now we're getting 
-      
-      matching_inputs <-  data_cl_union %>%  # take those questions that match between the database and what you're uploading (same Proj ID, different round)
-        rename(database_label_clean=text2,
-               question_type=type) %>% # keep only what you'll need and rename for easy matching
-        left_join(database_proj %>%  # Merge with the database of projects
-                     filter(!(Project_ID == updatedName &
-                            round_id ==round_id_survey)) %>%  # keep only cases of different proj ID & different round
-                     select(-round_id)) %>%  # remove the round variable, we'll be assigning it in the following rows
-        distinct(true_ID, .keep_all = T) %>%  # remove all duplicates (cases where we had similar questions in different rounds)
-        mutate(round_id =round_id_survey,
-               Project_ID = updatedName) # add the ID of the survey that you're working on
+        
+        # Now we're getting 
+        matching_inputs <-  data_cl_union %>%  # take those questions that match between the database and what you're uploading (same Proj ID, different round)
+          rename(database_label_clean=text2,
+                 question_type=type) %>% # keep only what you'll need and rename for easy matching
+          left_join(database_proj %>%  # Merge with the database of projects
+                      filter(!(Project_ID == updatedName &
+                                 round_id ==round_id_survey &
+                                 survey_type == type_id_survey)) %>%  # keep only cases of different proj ID & different round & type
+                      select(-round_id)) %>%  # remove the round variable, we'll be assigning it in the following rows
+          distinct(true_ID, .keep_all = T) %>%  # remove all duplicates (cases where we had similar questions in different rounds)
+          mutate(round_id =round_id_survey,
+                 Project_ID = updatedName) # add the ID of the survey that you're working on
       }else{
         matching_inputs <- data.frame()
       }
       
-
+      
     }else{
       matching_inputs <- data.frame()
     }
     
     split_data <- list(new_input,matching_inputs)
     split_data
-
-  })
     
-    myData1_clean <- reactive({
-      data <-
-        new_input_frame()  # Access the uploaded dataset from myData1 reactive object
-      
-      
-      
-      
-      if (is.null(data) || !dataReady())
-        # Check if data is NULL
-        return(NULL)
-      
-      
-      new_input <- data[[1]] # as we've worked with a list of dataframes, we need to use the correct element of this list for future operations
-      
-
-      database_proj <-
-        sp_get_file_reach(sp_con, 'Documents/Questions_db/Project_database.xlsx')
-      
-      
-
+  })
+  
+  myData1_clean <- reactive({
+    data <-
+      new_input_frame()  # Access the uploaded dataset from myData1 reactive object
+    
+    
+    
+    
+    if (is.null(data) || !dataReady())
+      # Check if data is NULL
+      return(NULL)
+    
+    
+    new_input <- data[[1]] # as we've worked with a list of dataframes, we need to use the correct element of this list for future operations
+    
+    
+    database_proj <-
+      sp_get_file_reach(sp_con, 'Documents/Questions_db/Project_database.xlsx')
+    
+    
+    
     # clean the comparison DB to not include questions from the project that the user is evaluating
     
-      database_clean <- database_proj %>%
-        filter(!(Project_ID == input$newName &
-                   round_id == input$round_id))
-
+    database_clean <- database_proj %>%
+      filter(!(Project_ID == input$newName &
+                 round_id == input$round_id))
+    
     
     #get the clean text----
     
@@ -707,7 +708,7 @@ server <- function(input, output, session) {
         'eight',
         'nine'
       ))
-
+    
     new_input <-  new_input %>%
       mutate(merger_column = text2) %>%
       unnest_tokens(word, merger_column) %>%
@@ -809,9 +810,9 @@ server <- function(input, output, session) {
     empty
   })
   
-    save_needed <-
-      reactiveVal(FALSE)  # Reactive value to track if button is clicked (will remove the table from view as soon as you click upload to db)
-
+  save_needed <-
+    reactiveVal(FALSE)  # Reactive value to track if button is clicked (will remove the table from view as soon as you click upload to db)
+  
   observeEvent(input$buildTables, {
     save_needed(FALSE) # allow the table to be displayed
     
@@ -819,22 +820,22 @@ server <- function(input, output, session) {
     data <- emptyDT()
     
     if(!sector_selected()){
-    cnt <-   sum(data$database_label_clean %in% 'new')
-    showModal(
-      modalDialog(
-        title = "Data uploaded to the workspace",
-        paste0(
-          "Your kobo tool has ",
-          nrow(data),
-          ' questions. ',
-          cnt,
-          ' out of them',
-          ifelse(cnt > 1, ' are new.', ' is new.')
-        ),
-        footer = NULL,
-        easyClose = TRUE
-      )
-    )}
+      cnt <-   sum(data$database_label_clean %in% 'new')
+      showModal(
+        modalDialog(
+          title = "Data uploaded to the workspace",
+          paste0(
+            "Your kobo tool has ",
+            nrow(data),
+            ' questions. ',
+            cnt,
+            ' out of them',
+            ifelse(cnt > 1, ' are new.', ' is new.')
+          ),
+          footer = NULL,
+          easyClose = TRUE
+        )
+      )}
   })
   
   # empty display and click tracking ---------------------------
@@ -947,8 +948,8 @@ server <- function(input, output, session) {
   
   # # Save the table when the button is clicked
   observeEvent(input$saveButton, {
-# logical test here ----------------------------------------------------
-      # get the merger_column for the final db
+    
+    # get the merger_column for the final db
     data_for_merging <- myData1_clean() %>%
       select(upload_label,
              upload_name,
@@ -972,126 +973,126 @@ server <- function(input, output, session) {
     repeated_qs <-
       new_input_frame() 
     repeated_qs <- repeated_qs[[2]]
-
+    
     if(length(na.omit(final_frame$database_label_clean))>0){
-    
-    reps <-
-      sum(final_frame$database_label_clean %in% 'new') # how may new rows I have to assign UUI to?
-    
-    # add the merger column to the final db
-    final_frame <- final_frame %>% 
-      inner_join(data_for_merging %>%
-                   distinct())
-
-    if (reps == nrow(final_frame)) {
-      main_questions_db <-  final_frame %>%
-        filter(!is.na(database_label_clean)) %>%  # delete entries that need to be deleted
-        mutate(
-          DB_ID = substr(
-            upload_name,
-            regexpr("\\_[^\\_]*$",  substr(upload_name, 1, 8)) + 1,
-            nchar(upload_name)
-          ),
-          true_ID = ids::uuid(reps),
-          database_label_clean = upload_label_clean,
-          old_or_new = 'new'
-        ) %>%
-        rename(merger_column = merger_column_new)
-    } else{
       
-      main_questions_db <-  final_frame %>%
-        filter(!is.na(database_label_clean)) %>%  # delete entries that need to be deleted
-        mutate(
-          old_or_new = ifelse(database_label_clean %in% 'new', 'new', 'old'),
-          database_label_clean = ifelse(
-            database_label_clean %in% 'new',
-            NA,
-            database_label_clean
-          )
-        )  # replace with NA. Less likely to break during matching
-
-      if(any(main_questions_db$question_type %in% c('decimal', 'integer'))){
-      main_questions_db_int <-  main_questions_db %>%
-        filter(question_type %in% c('decimal', 'integer')) %>%
-        left_join(database_proj) %>%  # join with the main DB to get the UUI for matching cols
-        distinct(across(-c(true_ID, round_id)), .keep_all = TRUE) # this is done for rare cases where a variable was not assigned its correct ID even though the name was identical (user's fault)
+      reps <-
+        sum(final_frame$database_label_clean %in% 'new') # how may new rows I have to assign UUI to?
       
-      }else{
-        main_questions_db_int <- data.frame()
-      }
-      if(any(main_questions_db$question_type %in% c('select_one', 'select_multiple'))){
-      # this is done to ensure that even if the question types are different (select_one vs select_multiple), qs are still matched
-      main_questions_db_select <-  main_questions_db %>%
-        filter(!question_type %in% c('decimal', 'integer')) %>%
-        left_join(database_proj %>% filter(!question_type %in% c('decimal', 'integer')) %>% select(-question_type)) %>%  # join with the main DB to get the UUI for matching cols
-        distinct(across(-c(true_ID, round_id)), .keep_all = TRUE) # this is done for rare cases where a variable was not assigned its correct ID even though the name was identical (user's fault)
-      }else{
-        main_questions_db_select <- data.frame()
-      }
+      # add the merger column to the final db
+      final_frame <- final_frame %>% 
+        inner_join(data_for_merging %>%
+                     distinct())
       
-      main_questions_db <-
-        rbind(main_questions_db_int, main_questions_db_select)
-      
-      main_questions_db <- main_questions_db %>%
-        # Assign the new values for new inputs into the DB
-        mutate(
-          DB_ID = ifelse(
-            is.na(DB_ID),
-            substr(
+      if (reps == nrow(final_frame)) {
+        main_questions_db <-  final_frame %>%
+          filter(!is.na(database_label_clean)) %>%  # delete entries that need to be deleted
+          mutate(
+            DB_ID = substr(
               upload_name,
               regexpr("\\_[^\\_]*$",  substr(upload_name, 1, 8)) + 1,
               nchar(upload_name)
             ),
-            DB_ID
-          ),
-          database_label_clean = ifelse(
-            is.na(database_label_clean),
-            upload_label_clean,
-            database_label_clean
-          ),
-          merger_column = ifelse(is.na(merger_column),
-                                 merger_column_new,
-                                 merger_column)
-        )
-      
-      main_questions_db$true_ID <-
-        ifelse(
-          is.na(main_questions_db$true_ID),
-          ids::uuid(length(is.na(
+            true_ID = ids::uuid(reps),
+            database_label_clean = upload_label_clean,
+            old_or_new = 'new'
+          ) %>%
+          rename(merger_column = merger_column_new)
+      } else{
+        
+        main_questions_db <-  final_frame %>%
+          filter(!is.na(database_label_clean)) %>%  # delete entries that need to be deleted
+          mutate(
+            old_or_new = ifelse(database_label_clean %in% 'new', 'new', 'old'),
+            database_label_clean = ifelse(
+              database_label_clean %in% 'new',
+              NA,
+              database_label_clean
+            )
+          )  # replace with NA. Less likely to break during matching
+        
+        if(any(main_questions_db$question_type %in% c('decimal', 'integer'))){
+          main_questions_db_int <-  main_questions_db %>%
+            filter(question_type %in% c('decimal', 'integer')) %>%
+            left_join(database_proj) %>%  # join with the main DB to get the UUI for matching cols
+            distinct(across(-c(true_ID, round_id)), .keep_all = TRUE) # this is done for rare cases where a variable was not assigned its correct ID even though the name was identical (user's fault)
+          
+        }else{
+          main_questions_db_int <- data.frame()
+        }
+        if(any(main_questions_db$question_type %in% c('select_one', 'select_multiple'))){
+          # this is done to ensure that even if the question types are different (select_one vs select_multiple), qs are still matched
+          main_questions_db_select <-  main_questions_db %>%
+            filter(!question_type %in% c('decimal', 'integer')) %>%
+            left_join(database_proj %>% filter(!question_type %in% c('decimal', 'integer')) %>% select(-question_type)) %>%  # join with the main DB to get the UUI for matching cols
+            distinct(across(-c(true_ID, round_id)), .keep_all = TRUE) # this is done for rare cases where a variable was not assigned its correct ID even though the name was identical (user's fault)
+        }else{
+          main_questions_db_select <- data.frame()
+        }
+        
+        main_questions_db <-
+          rbind(main_questions_db_int, main_questions_db_select)
+        
+        main_questions_db <- main_questions_db %>%
+          # Assign the new values for new inputs into the DB
+          mutate(
+            DB_ID = ifelse(
+              is.na(DB_ID),
+              substr(
+                upload_name,
+                regexpr("\\_[^\\_]*$",  substr(upload_name, 1, 8)) + 1,
+                nchar(upload_name)
+              ),
+              DB_ID
+            ),
+            database_label_clean = ifelse(
+              is.na(database_label_clean),
+              upload_label_clean,
+              database_label_clean
+            ),
+            merger_column = ifelse(is.na(merger_column),
+                                   merger_column_new,
+                                   merger_column)
+          )
+        
+        main_questions_db$true_ID <-
+          ifelse(
+            is.na(main_questions_db$true_ID),
+            ids::uuid(length(is.na(
+              main_questions_db$true_ID
+            ))),
             main_questions_db$true_ID
-          ))),
-          main_questions_db$true_ID
-        ) # true ID (not for the user to see)
+          ) # true ID (not for the user to see)
+        
+      }
+      
+      
+      # get the original choices and labels
+      original_data <- myData1() %>%
+        select(name,sector, label_english_choices, label_ukrainian,label_ukrainian_choices,
+               label_russian,label_russian_choices) %>%
+        rename(upload_name = name)
+      
+      #Keep only what's needed for the project DB and save
+      Project_database <<- main_questions_db %>%
+        select(true_ID, upload_name, upload_label_clean, question_type,merger_column) %>%
+        mutate(Project_ID = updatedName,
+               survey_type = survey_type,
+               round_id = input$round_id) %>%
+        left_join(original_data) %>%
+        rename(DB_ID = upload_name,
+               database_label_clean = upload_label_clean)%>%
+        rbind(database_proj,repeated_qs)
+      
+      
+      
+    }else{
+      Project_database <<- rbind(repeated_qs,database_proj)
+      
+      
+      
       
     }
-
-
-    # get the original choices and labels
-    original_data <- myData1() %>%
-      select(name,sector, label_english_choices, label_ukrainian,label_ukrainian_choices,
-             label_russian,label_russian_choices) %>%
-      rename(upload_name = name)
-
-    #Keep only what's needed for the project DB and save
-    Project_database <<- main_questions_db %>%
-      select(true_ID, upload_name, upload_label_clean, question_type,merger_column) %>%
-      mutate(Project_ID = updatedName,
-             survey_type = survey_type,
-             round_id = input$round_id) %>%
-      left_join(original_data) %>%
-      rename(DB_ID = upload_name,
-             database_label_clean = upload_label_clean)%>%
-      rbind(database_proj,repeated_qs)
-    
-
-    
-  }else{
-    Project_database <<- rbind(repeated_qs,database_proj)
-    
-    
-    
-    
-  }
     
     sp_post_file_reach(sp_con,
                        'Documents/Questions_db',
@@ -1265,7 +1266,7 @@ server <- function(input, output, session) {
             list(width = '350px', targets = c('database_label_clean','label_english_choices','label_ukrainian',
                                               'label_ukrainian_choices','label_russian','label_russian_choices')),
             list(width = '120px', targets = c('sector'))
-            )
+          )
         )
       )
     }
@@ -1364,29 +1365,29 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$country_choice_shape_click, {
-
+    
     new_selected <- req(input$country_choice_shape_click)
-
+    
     isolate(old_selected <- rv$selected)
     if(is_empty(rounds())){
       
     }else{
       
       if( !input$country_choice_shape_click$id %in% rv$oblasts){
-          rv$selected <- new_selected
-          rv$oblasts <- c(rv$oblasts,input$country_choice_shape_click$id)
-          oblast_iso <- ukraine %>% 
-            filter(ADM_PCODE %in% rv$oblasts)
-          
-          leafletProxy("country_choice") %>%
-            clearGroup("selection") %>%
-            addPolygons(data = oblast_iso,
-                        fillColor = "#EE5859",
-                        color = "#FFFFFF",
-                        fillOpacity = 1,
-                        label = ~oblast_iso$ADM_PCODE,
-                        group = "selection",
-                        layerId = ~oblast_iso$ADM_PCODE)
+        rv$selected <- new_selected
+        rv$oblasts <- c(rv$oblasts,input$country_choice_shape_click$id)
+        oblast_iso <- ukraine %>% 
+          filter(ADM_PCODE %in% rv$oblasts)
+        
+        leafletProxy("country_choice") %>%
+          clearGroup("selection") %>%
+          addPolygons(data = oblast_iso,
+                      fillColor = "#EE5859",
+                      color = "#FFFFFF",
+                      fillOpacity = 1,
+                      label = ~oblast_iso$ADM_PCODE,
+                      group = "selection",
+                      layerId = ~oblast_iso$ADM_PCODE)
       } else{
         rv$selected <- new_selected
         rv$oblasts <- setdiff(rv$oblasts,input$country_choice_shape_click$id)
@@ -1425,7 +1426,7 @@ server <- function(input, output, session) {
       pull(Project_ID) %>% unique
     
     selectInput("project_id_selected", "Select Project ID",
-                   choices = c(list_project))
+                choices = c(list_project))
   })
   rounds <- reactive({
     project_table <- sp_get_file_reach(sp_con, 'Documents/Questions_db/Project_database.xlsx')
@@ -1434,14 +1435,14 @@ server <- function(input, output, session) {
       filter(Project_ID == input$project_id_selected) %>% #'UKR2206B'
       arrange(as.numeric(round_id)) %>% 
       pull(round_id) %>%  unique
-  
+    
     map_table <- sp_get_file_reach(sp_con, 'Documents/Questions_db/map_table.json',driver = '.json') %>% 
       filter(Project_ID == input$project_id_selected) %>% #input$project_id_selected
       pull(round_id) %>% unique
     rounds <- setdiff(rounds,map_table)
     return(rounds)
-
-})
+    
+  })
   
   # this bit allows the user to return to the 'Geographical Input' tab after clicking the update button
   # it takes too long so I'm not using it
@@ -1464,27 +1465,27 @@ server <- function(input, output, session) {
     updateQueryString(url, mode = 'replace')
   })
   
-
-    output$round <- renderUI({
-      req(input$project_id_selected)
-      
-      
-      if(is_empty(rounds())) {
-        HTML(paste0("<p>All rounds for ",input$project_id_selected, " are uploaded"))
-      } else {
-        selectInput("round_selected", "Select Round",
-                       choices = c(rounds()))
-      }
-    })
-
   
-
+  output$round <- renderUI({
+    req(input$project_id_selected)
+    
+    
+    if(is_empty(rounds())) {
+      HTML(paste0("<p>All rounds for ",input$project_id_selected, " are uploaded"))
+    } else {
+      selectInput("round_selected", "Select Round",
+                  choices = c(rounds()))
+    }
+  })
+  
+  
+  
   output$month <- renderUI({
     req(input$project_id_selected,
         input$round_selected)
     months <- c("January", "February", "March", "April",
-               "May", "June", "July", "August",
-               "September", "October", "November", "December")
+                "May", "June", "July", "August",
+                "September", "October", "November", "December")
     
     map_table <- sp_get_file_reach(sp_con, 'Documents/Questions_db/map_table.json',driver = '.json') %>% 
       filter(Project_ID == input$project_id_selected) %>% 
@@ -1493,8 +1494,8 @@ server <- function(input, output, session) {
     months <- setdiff(months,map_table)
     if(is_empty(rounds())) {
     } else {
-    selectInput("month_selected", "Select Month",
-                   choices = months)
+      selectInput("month_selected", "Select Month",
+                  choices = months)
     }
   })
   output$year <- renderUI({
@@ -1512,39 +1513,43 @@ server <- function(input, output, session) {
     years <- setdiff(years,map_table)
     if(is_empty(rounds())) {
     } else {
-    selectInput("year_selected", "Select Year",
-                   choices = years)
+      selectInput("year_selected", "Select Year",
+                  choices = years)
     }
   })
-  
+  # read the new map table
   map_table <- reactive({
     req(input$project_id_selected,
         input$round_selected,
         input$month_selected,
         input$year_selected,
         rv$oblasts)
+    # build a dataframe out of it
     map_table <- data.frame(Project_ID = input$project_id_selected,
                             round_id = input$round_selected,
                             month = input$month_selected,
                             year = input$year_selected,
                             PCODE = rv$oblasts)
-
+    
+    # get the sectors from the Project_database
     project_table <- sp_get_file_reach(sp_con, 'Documents/Questions_db/Project_database.xlsx') %>% 
       select(Project_ID, round_id, sector,) %>% 
       # mutate(round_id = as.numeric(round_id)) %>% 
       distinct() %>% 
       filter(sector != "",
              !is.na(sector))
-    
     assessment_name <- project_table() %>% 
       select(Project_ID,Name) %>% 
       rename("Assessment_Name" = Name)
+    # merge map_table with the sector table, assessment name table and Ukraine geometry, + add a date column for the visual
     map_table <- map_table %>% 
       left_join(project_table, by = c("Project_ID","round_id")) %>% 
       left_join(assessment_name, by = "Project_ID") %>% 
       left_join(ukraine %>% 
-                  select(ADM_PCODE, geometry), by = c('PCODE'='ADM_PCODE')) %>% 
-      distinct()
+                  select(ADM_PCODE,ADM_NAME, geometry), by = c('PCODE'='ADM_PCODE')) %>% 
+      mutate(date = as.POSIXct(paste0(year,'.',match(month, month.name),'.01 01:00:00'), format = "%Y.%m.%d %H:%M:%S"))
+    distinct()
+    # possible changes here ----------------------
     
     return(map_table)
   }) 
@@ -1564,10 +1569,10 @@ server <- function(input, output, session) {
     map_table <- database %>% distinct()
     assign("map_table",map_table,envir = globalenv())
     if(nrow(map_table) > 0){
-
+      
       isolate(sp_post_file_reach(sp_con,
-                         'Documents/Questions_db',
-                         'map_table.json',driver = '.json'))
+                                 'Documents/Questions_db',
+                                 'map_table.json',driver = '.json'))
     }
     new_selected <- req(input$country_choice_shape_click)
     
@@ -1603,7 +1608,7 @@ server <- function(input, output, session) {
     
   })
   
-
+  
   
   # output$test <- renderUI({
   #   renderTable(map_table())
@@ -1618,11 +1623,11 @@ server <- function(input, output, session) {
     if(is_empty(rounds())) {
     }else{
       isolate(actionButton("upload", "Upload info", 
-                   # onclick = "doReload('Geographical Input')"
-                   ))
+                           # onclick = "doReload('Geographical Input')"
+      ))
     }
   })
-
+  
 }
 
 shinyApp(ui = ui, server = server, enableBookmarking = "url")

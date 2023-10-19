@@ -190,8 +190,8 @@ print('All functions have been added')
 # Define the Sharepoint connection --------------------------------------------------
 sp_con <-
   sp_connection(
-    site = 'https://acted-my.sharepoint.com/personal/XXX', # replace with your address
-    username = 'XXX@reach-initiative.org', #replace with your username
+    site = 'XXX', # replace with your address
+    username = 'XXX', #replace with your username
     password = "XXX", # your password
     get_config = T
   )
