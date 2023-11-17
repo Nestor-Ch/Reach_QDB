@@ -1,6 +1,5 @@
 # utils for the app
 options(shiny.maxRequestSize=30*1024^2)
-
 # Define functions--------------------------------------------
 # function that will be used for the round numbers in the research cycle table to make them pretty
 numbers_to_string <- function(vec) {
@@ -190,9 +189,9 @@ print('All functions have been added')
 # Define the Sharepoint connection --------------------------------------------------
 sp_con <-
   sp_connection(
-    site = 'XXX', # replace with your address
-    username = 'XXX', #replace with your username
-    password = "XXX", # your password
+    site = 'https://acted-my.sharepoint.com/personal/nestor_cheryba_reach-initiative_org', # replace with your address
+    username = 'nestor.cheryba@reach-initiative.org', #replace with your username
+    password = "Par1s1sBurning", # your password
     get_config = T
   )
 

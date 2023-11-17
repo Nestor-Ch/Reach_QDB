@@ -16,12 +16,21 @@ library(curl)
 library(tidytext)
 library(leaflet)
 library(leaflet.extras2)
-library(rgdal)
 library(sf)
+
 # library(mapview)
 # library(webshot)
 
 source("www/src/STX_Utils_DB_app.R")
+source('.Rprofile')
+
+PYTHON_DEPENDENCIES = c('pip', 'numpy','pandas','spacy')
+
+# to do ------------
+
+# test a bit. Don't think that it's breakable anymore but still
+
+
 # webshot::install_phantomjs(force = T)
 options(shiny.maxRequestSize = 30 * 1024 ^ 2,
         rsconnect.max.bundle.files = 5145728000)
@@ -271,6 +280,37 @@ ui <- function(req) { fluidPage(
 }
 
 server <- function(input, output, session) {
+  
+  # Python Setup 
+  virtualenv_dir = Sys.getenv('VIRTUALENV_NAME')
+  python_path = Sys.getenv('PYTHON_PATH')
+  
+  # Create virtual env and install dependencies
+  reticulate::virtualenv_create(envname = virtualenv_dir, python = python_path)
+  reticulate::use_virtualenv(virtualenv_dir, required = T)
+  
+  # check if modules are available, install only if needed
+  model_av <- reticulate::py_module_available("en_core_web_md")
+  spacy_av <- reticulate::py_module_available("spacy")
+  pandas_av <- reticulate::py_module_available("pandas")
+  numpy_av <- reticulate::py_module_available("numpy")
+  
+  # install packages
+  if(any(!c(spacy_av,pandas_av,numpy_av))){
+    reticulate::virtualenv_install(virtualenv_dir, packages = PYTHON_DEPENDENCIES, ignore_installed=FALSE)
+  }
+  
+  # install the language model
+  if(!model_av){ 
+    system("python -c \"import spacy; spacy.cli.download('en_core_web_md')\"")
+  }
+  
+  # source the python script
+  reticulate::source_python('www/src/semantic_match.py')
+  
+  # end--------------------------------------
+  
+  
   # Block where we get our data from the server
   
   database_proj <-
@@ -356,6 +396,7 @@ server <- function(input, output, session) {
   
   myData1 <- reactive({
     inFile <- input$Workflow_table
+    
     if (is.null(inFile))
       # Only read data if button is clicked
       return(NULL)
@@ -424,6 +465,7 @@ server <- function(input, output, session) {
     if('sector' %in% names(data) & 
        any(! (unique((data$sector)) %in% c('WASH','AAP','CCCM','Shelter and NFI','Education',
                                            'Food Security and Livelihoods','Health','Displacement',
+                                           'Cash and Markets',
                                            'Protection','Nutrition','Emergency Telecommunications',
                                            'Logistics', NA))
        )
@@ -432,6 +474,7 @@ server <- function(input, output, session) {
       wrong_sectors <- setdiff(
         unique(data$sector), c('WASH','AAP','CCCM','Shelter and NFI','Education',
                                'Food Security and Livelihoods','Health','Displacement',
+                               'Cash and Markets',
                                'Protection','Nutrition','Emergency Telecommunications',
                                'Logistics', NA)
       )
@@ -530,33 +573,31 @@ server <- function(input, output, session) {
   
   
   # save the tool to the sharepoint-----------------
-  
-  
-  observeEvent(input$Workflow_table, {
-    
-    inFile <- input$Workflow_table
-    
-    if (is.null(inFile))
-      # Only read data if button is clicked
-      return(NULL)
-    sheet_names <-  openxlsx::getSheetNames(inFile$datapath)
-    # create your workbook, it'll be one of the inputs in the sp_post_file
-    wb <- openxlsx::createWorkbook()
-    for (sheet in sheet_names){
-      data <- read.xlsx(inFile$datapath, sheet = sheet)
-      openxlsx::addWorksheet(wb , sheet)
-      openxlsx::writeData(wb, sheet, data,startRow = 1, startCol = 1)
-    }
-    
-    
-    sp_post_file_reach(sp_con,
-                       'Documents/Questions_db/Tools',
-                       input$Workflow_table$name,
-                       write_tool = T,
-                       work_book_name = wb)
-    
-  })
-  
+  # observeEvent(input$Workflow_table, {
+  #   
+  #   inFile <- input$Workflow_table
+  #   
+  #   if (is.null(inFile))
+  #     # Only read data if button is clicked
+  #     return(NULL)
+  #   sheet_names <-  openxlsx::getSheetNames(inFile$datapath)
+  #   # create your workbook, it'll be one of the inputs in the sp_post_file
+  #   wb <- openxlsx::createWorkbook()
+  #   for (sheet in sheet_names){
+  #     data <- read.xlsx(inFile$datapath, sheet = sheet)
+  #     openxlsx::addWorksheet(wb , sheet)
+  #     openxlsx::writeData(wb, sheet, data,startRow = 1, startCol = 1)
+  #   }
+  #   
+  #   
+  #   sp_post_file_reach(sp_con,
+  #                      'Documents/Questions_db/Tools',
+  #                      input$Workflow_table$name,
+  #                      write_tool = T,
+  #                      work_book_name = wb)
+  #   
+  # })
+  # 
   # clean your data ---------------------------
   
   
@@ -574,13 +615,22 @@ server <- function(input, output, session) {
     if (is.null(data) || !dataReady() || sector_selected() ) # CHANGE A THING HERE ---------------------
     # Check if data is NULL
     return(NULL)
-    print(sector_selected())
     #Cleaning the frame
-    new_input <-
-      column_cleaner(data, name = 'name', label = 'label_english') %>%
-      select(-label_english_choices)
     
-  
+    showModal(
+      modalDialog(
+        title = "Processing the data",
+        'The uploaded KOBO tool is getting processed',
+        footer = NULL,
+        easyClose = TRUE
+      )
+    )
+    
+    new_input_choices <-
+      column_cleaner(data, name = 'name', label = 'label_english')
+    
+    new_input <- new_input_choices %>%
+      select(-label_english_choices)
     
     # check if the project db has some of the questions
     
@@ -653,6 +703,10 @@ server <- function(input, output, session) {
           distinct(true_ID, .keep_all = T) %>%  # remove all duplicates (cases where we had similar questions in different rounds)
           mutate(round_id =round_id_survey,
                  Project_ID = updatedName) # add the ID of the survey that you're working on
+        
+        # add the correct DB ID somewhere here ----------------------------
+        
+        
       }else{
         matching_inputs <- data.frame()
       }
@@ -662,17 +716,14 @@ server <- function(input, output, session) {
       matching_inputs <- data.frame()
     }
     
-    split_data <- list(new_input,matching_inputs)
+    split_data <- list(new_input,matching_inputs,new_input_choices)
     split_data
     
   })
   
-  myData1_clean <- reactive({
+  myData0_clean <- reactive({
     data <-
       new_input_frame()  # Access the uploaded dataset from myData1 reactive object
-    
-    
-    
     
     if (is.null(data) || !dataReady())
       # Check if data is NULL
@@ -681,17 +732,17 @@ server <- function(input, output, session) {
     
     new_input <- data[[1]] # as we've worked with a list of dataframes, we need to use the correct element of this list for future operations
     
+    new_input_choices <- data[[3]] # well need to add the labels that we'll be joining
     
     database_proj <-
       sp_get_file_reach(sp_con, 'Documents/Questions_db/Project_database.xlsx')
-    
-    
     
     # clean the comparison DB to not include questions from the project that the user is evaluating
     
     database_clean <- database_proj %>%
       filter(!(Project_ID == input$newName &
-                 round_id == input$round_id))
+                 round_id == input$round_id &
+                 survey_type == input$newType))
     
     
     #get the clean text----
@@ -718,30 +769,123 @@ server <- function(input, output, session) {
       ungroup() %>% 
       filter(str_count(text2, '\\w+')>2)
     
+    # new_input <<- new_input
+    # database_clean <<- database_clean
+    
     type_ls <-
       list(c('select_one', 'select_multiple'),
            c('integer', 'decimal'))
     # fuzzy matching to the project database
     fuzzy_final <-  data.frame()
+    fuzzy_identical <- data.frame()
     for (type_element in type_ls) {
-      fuzzy_result <-  stringdist_left_join(
+      fuzzy_result_id <-  stringdist_left_join(
         new_input %>%
           dplyr::filter(type %in% type_element),
         database_clean %>%
           dplyr::filter(question_type %in% type_element) %>%
-          select(database_label_clean, DB_ID, merger_column),
+          select(database_label_clean, DB_ID, merger_column, true_ID),
         by = c("merger_column_new" = "merger_column"),
         method = "jaccard",
         q = 2,
         distance_col = "distance"
       ) 
-      fuzzy_result <- fuzzy_result %>%
-        filter(distance <= 0.65) %>%  # remove all observations that are too far away from each other
+      
+      fuzzy_result_id <- fuzzy_result_id %>%
+        filter(distance <= 0.1) %>%  # remove all observations that are too far away from each other
         group_by(text2) %>%
-        slice_min(distance, n = 10) %>%
+        arrange(distance) %>% 
+        do(head(.,1)) %>% # and keep the top choice for each. At distance of 0.1 they can be considered the same
         ungroup()
-      # some labels didn't have any matches, so we have to add them back
-      if (nrow(fuzzy_result > 0)) {
+      
+      # remove matches from further process
+      if(nrow(fuzzy_result_id)>0){
+        new_input <- new_input %>% 
+          anti_join(fuzzy_result_id %>% select(names(new_input)))
+        
+        # keep the identical entries and get their TRUE_ID
+        fuzzy_result_id <- fuzzy_result_id %>% 
+          select(sector,text2, true_ID,label_ukrainian,label_ukrainian_choices,label_russian,label_russian_choices,
+                 type,name,database_label_clean,merger_column_new) %>% 
+          rename(question_type = type,
+                 merger_column = merger_column_new,
+                 DB_ID = name) %>% 
+          select(-database_label_clean) %>% 
+          left_join(new_input_choices %>% select(text2, label_english_choices)) %>% 
+          rename(database_label_clean = text2) %>% 
+          mutate(Project_ID = input$newName,
+                 round_id = input$round_id,
+                 survey_type = input$newType)
+      }
+      fuzzy_identical <- rbind(fuzzy_identical,fuzzy_result_id)
+      
+      # semantic matching for the rest ----------------------
+      # new_input<<- new_input
+      # type_element<<-type_element
+      # database_clean<<-database_clean
+
+      # call a python function that'll get me the semantic similarities. Run them on merger columns. Works better
+      fuzzy_result <-  py$similarity_calculator(
+        column_new = new_input %>% dplyr::filter(type %in% type_element) %>% pull(merger_column_new) %>% unique(),
+        qdb = database_clean %>% dplyr::filter(question_type %in% type_element) %>% select(true_ID, merger_column) %>%  distinct(),
+        sim_th = 0.9
+      ) 
+      
+      # fuzzy_result <- do.call(bind_rows, lapply(fuzzy_result,as.data.frame))
+      
+      
+      if (nrow(fuzzy_result) > 0) {
+        # get top 10 matches per question
+        fuzzy_result <- fuzzy_result %>%
+          group_by(merger_column_new) %>%
+          arrange(desc(similarity)) %>% 
+          do(head(.,10)) %>% # and keep the top choice for each. At distance of 0.1 they can be considered the same
+          ungroup()
+        
+        # get semantically identical rows. We can later semi join them with the fuzzy_result table
+        fuzzy_result_id2 <- fuzzy_result %>% 
+          group_by(merger_column_new) %>%
+          filter(similarity>0.97) %>% 
+          group_by(merger_column_new) %>% 
+          do(head(.,1)) %>% 
+          ungroup()
+        
+        
+        # get the labels from the database + other variables from the new_input
+        fuzzy_result <- fuzzy_result %>% 
+          left_join(database_clean %>% select(true_ID, database_label_clean) %>% distinct()) %>% 
+          left_join(new_input %>%
+                      dplyr::filter(type %in% type_element) %>% 
+                      select(sector,text2, label_english,label_ukrainian,label_ukrainian_choices,label_russian,label_russian_choices,
+                             type,name,merger_column_new))%>% 
+          distinct() 
+        
+        
+        # if there are any semantically identical matches - add them to the frame
+        if(nrow(fuzzy_result_id2) >0){
+          fuzzy_result_id2 <- fuzzy_result %>% 
+            semi_join(fuzzy_result_id2) %>% 
+            select(-c(merger_column,similarity)) %>% 
+            rename(merger_column = merger_column_new,
+                   question_type = type,
+                   DB_ID = name) %>% 
+            select(-c(database_label_clean,label_english)) %>% 
+            left_join(new_input_choices %>% select(text2, label_english_choices)) %>% 
+            rename(database_label_clean = text2) %>% 
+            mutate(Project_ID = input$newName,
+                   round_id = input$round_id,
+                   survey_type = input$newType)
+          
+          fuzzy_identical <- rbind(fuzzy_identical,fuzzy_result_id2)
+          
+        }
+        
+        # remove the columns that we don't need anymore
+        fuzzy_result <- fuzzy_result %>% 
+          select(-c(merger_column,similarity,true_ID)) %>% 
+          tibble()
+        
+        # some labels didn't have any matches, so we have to add them back
         if (any(!new_input[new_input$type %in% type_element, ]$text2 %in% unique(fuzzy_result$text2))) {
           missing_text <-
             new_input[!new_input$text2 %in% unique(fuzzy_result$text2) &
@@ -766,18 +910,14 @@ server <- function(input, output, session) {
         fuzzy_result <- new_input %>%
           dplyr::filter(type %in% type_element) %>%
           mutate(
-            database_label_clean = 'new',
-            DB_ID = NA,
-            distance = 0,
-            merger_column = NA
-          )
+            database_label_clean = 'new')
       }
+
       fuzzy_final <- rbind(fuzzy_result, fuzzy_final)
     }
     
     # Make pretty
     fuzzy_final <- fuzzy_final %>%
-      select(-c(distance, DB_ID)) %>%
       rename(
         upload_name = name,
         upload_label = label_english,
@@ -788,10 +928,23 @@ server <- function(input, output, session) {
       distinct()
     # set up the reference DB
     fuzzy_final
+    
+    # Split into the final output + identical output
+    
+    split_data <- list(fuzzy_final,fuzzy_identical)
+    split_data
+    
+    
+  })
+  
+  # set up myData1_clean that only contains the data that was fuzzy matched
+  
+  myData1_clean <- reactive({
+    data <-  myData0_clean()
+    data <- data[[1]]
   })
   
   # set up the  data that the user will be clicking ---------------------------
-  
   
   emptyDT <- reactive({
     data <- myData1_clean()
@@ -972,7 +1125,12 @@ server <- function(input, output, session) {
     # get the matching questions (Questions that were matched by being the same project but different round than what is uploaded)
     repeated_qs <-
       new_input_frame() 
+    repeated_qs_semantic <- myData0_clean()
+    
+    repeated_qs_semantic <- repeated_qs_semantic[[2]]
     repeated_qs <- repeated_qs[[2]]
+
+    repeated_qs <- rbind(repeated_qs,repeated_qs_semantic)
     
     if(length(na.omit(final_frame$database_label_clean))>0){
       
@@ -1097,7 +1255,7 @@ server <- function(input, output, session) {
     sp_post_file_reach(sp_con,
                        'Documents/Questions_db',
                        'Project_database.xlsx')
-    
+
     
     #Keep only what's needed for the main DB and save
     Database_questions <<- Project_database %>%
@@ -1114,7 +1272,7 @@ server <- function(input, output, session) {
     sp_post_file_reach(sp_con,
                        'Documents/Questions_db',
                        'Database_questions.xlsx')
-    
+
     
     # Optional: Provide a confirmation message
     showModal(
@@ -1533,22 +1691,26 @@ server <- function(input, output, session) {
     
     # get the sectors from the Project_database
     project_table <- sp_get_file_reach(sp_con, 'Documents/Questions_db/Project_database.xlsx') %>% 
-      select(Project_ID, round_id, sector,) %>% 
+      select(Project_ID, round_id, sector) %>% 
       # mutate(round_id = as.numeric(round_id)) %>% 
       distinct() %>% 
       filter(sector != "",
              !is.na(sector))
+    
+    # get the nice names for every assessment (from research cycle tracker)
     assessment_name <- project_table() %>% 
       select(Project_ID,Name) %>% 
       rename("Assessment_Name" = Name)
+    
     # merge map_table with the sector table, assessment name table and Ukraine geometry, + add a date column for the visual
     map_table <- map_table %>% 
       left_join(project_table, by = c("Project_ID","round_id")) %>% 
       left_join(assessment_name, by = "Project_ID") %>% 
       left_join(ukraine %>% 
-                  select(ADM_PCODE,ADM_NAME, geometry), by = c('PCODE'='ADM_PCODE')) %>% 
-      mutate(date = as.POSIXct(paste0(year,'.',match(month, month.name),'.01 01:00:00'), format = "%Y.%m.%d %H:%M:%S"))
-    distinct()
+                  select(ADM_PCODE,ADM_NAME, geometry), 
+                by = c('PCODE'='ADM_PCODE')) %>% 
+      mutate(date = paste0('01/',match(month, month.name),'/',year,' 01:00')) %>% 
+      distinct()
     # possible changes here ----------------------
     
     return(map_table)
@@ -1562,10 +1724,15 @@ server <- function(input, output, session) {
       as.data.frame()
     
     database_map_table <- bind_rows(database_map_table,map_table) %>% distinct()
+    
+    print(head(database_map_table))
+    
     return(database_map_table)
   })
   observeEvent(input$upload, {
+    
     database <- database() 
+    
     map_table <- database %>% distinct()
     assign("map_table",map_table,envir = globalenv())
     if(nrow(map_table) > 0){
