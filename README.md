@@ -7,8 +7,8 @@ The app allows the user to systematize the KOBO forms used within their organiza
 - [Database structure](#The-structure)
 - [Uploading the data](#Data-uploading)
 - [The matching process](#Matching-process)
-  - [Semantic matching](##Semantic-matching)
-  - [Setting up the Python virtual environment](####Setting-up-a-Python-virtual-environment-in-Shiny)
+  - [Semantic matching](#Semantic-matching)
+  - [Setting up the Python virtual environment](#Setting-up-a-Python-virtual-environment-in-Shiny)
 
 
 ## The structure
