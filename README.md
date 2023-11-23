@@ -110,5 +110,5 @@ reticulate::source_python('www/src/semantic_match.py')
 Most of these functions are wrapped around `if` statements to make the app run faster - it's faster to check  the environment for existance of packages and functions than calling Python functions multiple times.
 After this is run, the function is added into the local environment and can be used as a regular R function.
 
-These set ups to a large extent are based to a large extent on the following [page](https://github.com/ranikay/shiny-reticulate-app#setting-up-the-local-virtual-environment) with tweaks to make it work in my environment.
+These set ups to a large extent are based on the following [page](https://github.com/ranikay/shiny-reticulate-app#setting-up-the-local-virtual-environment) with tweaks to make it work in my environment.
 
