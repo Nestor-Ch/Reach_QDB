@@ -102,6 +102,7 @@ reticulate::use_virtualenv(virtualenv_dir, required = T)
 reticulate::virtualenv_install(virtualenv_dir, packages = PYTHON_DEPENDENCIES, ignore_installed=FALSE)
 
 In my case, the app also needs to install the language model, this is done through the `system` command, which is a pip wraparound
+
 system("python -c \"import spacy; spacy.cli.download('en_core_web_md')\"")
 ##### Function activation
 The matching function is sourced through the following command.
