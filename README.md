@@ -3,6 +3,14 @@ This repo is based on the Questionnaire database system I've developed within Re
 
 The app allows the user to systematize the KOBO forms used within their organization. The following Readme goes through the proccess of uploading your tools into the database, browsing the results and explains what's going on under the hood of the app
 
+## Table of Contents
+- [Database structure](## The structure)
+- [Uploading the data](## Data uploading)
+- [The matching process](## Matching process)
+  - [Semantic matching](### Semantic matching)
+  - [Setting up the Python virtual environment](#### Setting up a Python virtual environment in Shiny)
+
+
 ## The structure
 The app is created to support the database structure of a 3 tables:
    - **The Research_cycle_tracker table** - The table consisting of 2 columns: 
@@ -55,6 +63,7 @@ Prior to the uploading process the user has to prepare the Kobo form. The only m
    - Nutrition
    - Emergency Telecommunications
    - Logistics
+   - Winterization
 
 If the sector in your KOBO tool doesn't match one of these exactly, it will be left blank in the Final QDB, which is fine for Demographic variables and general ones that are needed for backend KOBO functionalities. 
 
@@ -71,11 +80,33 @@ After these checks are done, the algorithm takes the new unique questions from t
 
 To match the new input to the existing questions in the Project_database, the algorithm starts off by cleaning the text label of the Kobo survey by removing all of the punctuation and stopwords. It then tries to match this clean column to the same clean column already existing in the Project_database by calculating a q-gram Jaccard distance of each item in the input text column to the text column in the Project_database. The tests conducted during the initial implementation showed that the algorithm yields the best results when parameter q = 2. For more information on [Jaccardian distance](https://www.statisticshowto.com/jaccard-index/) and [q-grams](https://profs.scienze.univr.it/~liptak/FundBA/slides/StringDistance2_6up.pdf) please check the linked materials.
 
-All matches where the distance is larger than 0.65 are dropped, and top 10 matches for each new column are selected for the final matching table (top 10 is the best case scenario, usually we're getting less than that). If there are no matches in the Project_database, the question is considered 'new'.
+All matches where the distance is smaller than 0.9 are added, into the main database before proceeding to the final stage of the matching process.
+
+### Semantic matching
+The clean database is passed into a Python based function that calculates the semantic distance between the uploaded data and the existing database. The matching is conducted through Python's Spacy module which is based on Google's [word2vec model](https://code.google.com/archive/p/word2vec/). The app is using medium sized language model, due to Shiny server's memory constratints. Cases where the similarity coefficient is larger than 0.97 are automatically matched into the existing database. Cases where these differences are smaller than 0.97 but larger than 0.89 are filtered out for the user input as the closest matches to the input data. Entries with similarity coefficients less than 0.89 are considered `new`. These thresholds have been chosen after testing with different Kobo forms and showed to provide the best results. Top 10 matches for each new question are selected for the final matching table (top 10 is the best case scenario, usually we're getting less than that).
 
 After these steps are done the user has to select the type of the assessment that they're uploading (whether the survey was conducted on the Individual, household or settlement level) and click the **Build tables** button.
 
+#### Setting up a Python virtual environment in Shiny
+The environment set up happens in the first lines of script outside of the Shiny server with the use of [reticulate package](https://cran.r-project.org/web/packages/reticulate/reticulate.pdf). This way, the Python environment, packages, and word2vec model are loaded only once and do not need to be activated every time the app is refreshed. This causes an extension of the initial load time of the app (about 2 minutes to load everything) but doesn't add any additional time constraints onto the user.
 
+Setting up the environment relies on the Python paths set up in the .Rprofile file. In cases of running the app on your local machine it relies on the python version that the user has on their computer (Python 3.9.9 in my case). If the app is run in the Shiny environment, the script uses the Shiny server's Python path - PYTHON_PATH = '/opt/python/3.7.7/bin/python3'. 
 
+#### The environment itself is set up through the following set of commands:
 
+##### Creation of the virtual environment on the Shiny server
+reticulate::virtualenv_create(envname = virtualenv_dir, python = python_path)
+##### Activation of the virtual environment
+reticulate::use_virtualenv(virtualenv_dir, required = T)
+##### Package installation
+reticulate::virtualenv_install(virtualenv_dir, packages = PYTHON_DEPENDENCIES, ignore_installed=FALSE)
+
+In my case, the app also needs to install the language model, this is done through the `system` command, which is a pip wraparound
+system("python -c \"import spacy; spacy.cli.download('en_core_web_md')\"")
+##### Function activation
+The matching function is sourced through the following command.
+reticulate::source_python('www/src/semantic_match.py')
+After this is run, the function is added into the local environment and can be used as a regular R function.
+
+These set ups to a large extent are based to a large extent on the following [page](https://github.com/ranikay/shiny-reticulate-app#setting-up-the-local-virtual-environment) with tweaks to make it work in my environment.
 
