@@ -4,11 +4,11 @@ This repo is based on the Questionnaire database system I've developed within Re
 The app allows the user to systematize the KOBO forms used within their organization. The following Readme goes through the proccess of uploading your tools into the database, browsing the results and explains what's going on under the hood of the app
 
 ## Table of Contents
-- [Database structure](## The structure)
-- [Uploading the data](## Data uploading)
-- [The matching process](## Matching process)
-  - [Semantic matching](### Semantic matching)
-  - [Setting up the Python virtual environment](#### Setting up a Python virtual environment in Shiny)
+- [Database structure](#The-structure)
+- [Uploading the data](#Data-uploading)
+- [The matching process](#Matching-process)
+  - [Semantic matching](##Semantic-matching)
+  - [Setting up the Python virtual environment](####Setting-up-a-Python-virtual-environment-in-Shiny)
 
 
 ## The structure
