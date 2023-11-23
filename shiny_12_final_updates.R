@@ -24,16 +24,14 @@ library(sf)
 source("www/src/STX_Utils_DB_app.R")
 source('.Rprofile')
 
-PYTHON_DEPENDENCIES = c('pip', 'numpy','pandas','spacy')
-
 # to do ------------
-
-# test a bit. Don't think that it's breakable anymore but still
 
 
 # webshot::install_phantomjs(force = T)
 options(shiny.maxRequestSize = 30 * 1024 ^ 2,
         rsconnect.max.bundle.files = 5145728000)
+
+# map setup
 
 ukraine <- st_read("www/shapefile/Ukraine_Admin1.shp") %>% 
   st_simplify(preserveTopology = T, dTolerance = 3000)
@@ -49,7 +47,7 @@ choose_country_map <- leaflet::leaflet(
                        color = "#FFFFFF",
                        weight= 1,
                        fillOpacity = 0.8,
-                       highlightOptions = highlightOptions(
+                       highlightOptions = highlightOptions( 
                          fillColor = "#aaaaaa",
                          color = "#aaaaaa",
                          weight = 2,
@@ -58,6 +56,45 @@ choose_country_map <- leaflet::leaflet(
                        label = ~ukraine$ADM_NAME,
                        layerId = ~ukraine$ADM_PCODE)%>%
   setView(lng = 31.14869, lat = 48.5, zoom = 6) 
+
+# Python Setup 
+
+PYTHON_DEPENDENCIES = c('pip', 'numpy','pandas','spacy')
+
+virtualenv_dir = Sys.getenv('VIRTUALENV_NAME')
+python_path = Sys.getenv('PYTHON_PATH')
+
+# Create virtual env and install dependencies
+
+if(!virtualenv_dir %in% reticulate::virtualenv_list()){
+  reticulate::virtualenv_create(envname = virtualenv_dir, python = python_path)
+}
+
+if(! grepl(Sys.getenv('VIRTUALENV_NAME'),reticulate::py_config()$virtualenv)){
+  reticulate::use_virtualenv(virtualenv_dir, required = T)
+}
+
+# check if modules are available, install only if needed
+model_av <- reticulate::py_module_available("en_core_web_md")
+spacy_av <- reticulate::py_module_available("spacy")
+pandas_av <- reticulate::py_module_available("pandas")
+# install packages
+if(any(!c(spacy_av,pandas_av))){
+  reticulate::virtualenv_install(virtualenv_dir, packages = PYTHON_DEPENDENCIES, ignore_installed=FALSE)
+}
+
+# install the language model
+if(!model_av){ 
+  system("python -c \"import spacy; spacy.cli.download('en_core_web_md')\"")
+}
+
+# source the python script
+if(!exists('similarity_calculator')){
+  reticulate::source_python('www/src/semantic_match.py')
+}
+
+# end--------------------------------------
+
 
 # --------------- Shiny itself ---------------------
 
@@ -280,36 +317,8 @@ ui <- function(req) { fluidPage(
 }
 
 server <- function(input, output, session) {
-  
-  # Python Setup 
-  virtualenv_dir = Sys.getenv('VIRTUALENV_NAME')
-  python_path = Sys.getenv('PYTHON_PATH')
-  
-  # Create virtual env and install dependencies
-  reticulate::virtualenv_create(envname = virtualenv_dir, python = python_path)
-  reticulate::use_virtualenv(virtualenv_dir, required = T)
-  
-  # check if modules are available, install only if needed
-  model_av <- reticulate::py_module_available("en_core_web_md")
-  spacy_av <- reticulate::py_module_available("spacy")
-  pandas_av <- reticulate::py_module_available("pandas")
-  numpy_av <- reticulate::py_module_available("numpy")
-  
-  # install packages
-  if(any(!c(spacy_av,pandas_av,numpy_av))){
-    reticulate::virtualenv_install(virtualenv_dir, packages = PYTHON_DEPENDENCIES, ignore_installed=FALSE)
-  }
-  
-  # install the language model
-  if(!model_av){ 
-    system("python -c \"import spacy; spacy.cli.download('en_core_web_md')\"")
-  }
-  
-  # source the python script
-  reticulate::source_python('www/src/semantic_match.py')
-  
-  # end--------------------------------------
-  
+    
+
   
   # Block where we get our data from the server
   
@@ -464,7 +473,7 @@ server <- function(input, output, session) {
     # check if the correct sector names were assigned
     if('sector' %in% names(data) & 
        any(! (unique((data$sector)) %in% c('WASH','AAP','CCCM','Shelter and NFI','Education',
-                                           'Food Security and Livelihoods','Health','Displacement',
+                                           'Food Security and Livelihoods','Winterization','Health','Displacement',
                                            'Cash and Markets',
                                            'Protection','Nutrition','Emergency Telecommunications',
                                            'Logistics', NA))
@@ -474,7 +483,7 @@ server <- function(input, output, session) {
       wrong_sectors <- setdiff(
         unique(data$sector), c('WASH','AAP','CCCM','Shelter and NFI','Education',
                                'Food Security and Livelihoods','Health','Displacement',
-                               'Cash and Markets',
+                               'Cash and Markets','Winterization',
                                'Protection','Nutrition','Emergency Telecommunications',
                                'Logistics', NA)
       )
@@ -821,19 +830,18 @@ server <- function(input, output, session) {
       
       # semantic matching for the rest ----------------------
       # new_input<<- new_input
-      # type_element<<-type_element
+      # type_element<<-c('select_one', 'select_multiple')
       # database_clean<<-database_clean
 
       # call a python function that'll get me the semantic similarities. Run them on merger columns. Works better
-      fuzzy_result <-  py$similarity_calculator(
+      fuzzy_result <-  similarity_calculator(
         column_new = new_input %>% dplyr::filter(type %in% type_element) %>% pull(merger_column_new) %>% unique(),
         qdb = database_clean %>% dplyr::filter(question_type %in% type_element) %>% select(true_ID, merger_column) %>%  distinct(),
-        sim_th = 0.9
+        sim_th = 0.89
       ) 
       
       # fuzzy_result <- do.call(bind_rows, lapply(fuzzy_result,as.data.frame))
-      
-      
+
       if (nrow(fuzzy_result) > 0) {
         # get top 10 matches per question
         fuzzy_result <- fuzzy_result %>%
