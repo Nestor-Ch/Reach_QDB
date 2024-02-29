@@ -70,7 +70,7 @@ if(!virtualenv_dir %in% reticulate::virtualenv_list()){
   reticulate::virtualenv_create(envname = virtualenv_dir, python = python_path)
 }
 
-if(! grepl(Sys.getenv('VIRTUALENV_NAME'),reticulate::py_config()$virtualenv)){
+if(any(grepl(Sys.getenv('VIRTUALENV_NAME'),reticulate::virtualenv_list()))){
   reticulate::use_virtualenv(virtualenv_dir, required = T)
 }
 
@@ -198,7 +198,7 @@ ui <- function(req) { fluidPage(
                            selectInput(
                              'newType',
                              'Was this a household or individual assessment?',
-                             choices = c('Household', 'Individual','Settlement', 'Customer', 'Retailer')
+                             choices = c('Household', 'Individual','Settlement','Key Informants' ,'Customer', 'Retailer')
                            ),
                            div(style = "height: 20px;"),
                            span(
@@ -322,12 +322,10 @@ server <- function(input, output, session) {
   
   # Block where we get our data from the server
   
-  database_proj <-
-    sp_get_file_reach(sp_con, 'Documents/Questions_db/Project_database.xlsx')
-  
-  database_research_cycle <-
-    sp_get_file_reach(sp_con,
-                      'Documents/Questions_db/Research_cycle_tracker.xlsx')
+  database_proj <-od$load_rds("Documents/Questions_db/Project_database.rds")
+
+  database_research_cycle <- od$load_rds("Documents/Questions_db/Research_cycle_tracker.rds")
+
   # available data block -----------------------------------------------------------
   
   Refresh_needed <-
@@ -341,10 +339,8 @@ server <- function(input, output, session) {
   project_table <- reactive({
     
     if (Refresh_needed()) {
-      database_proj <-
-        sp_get_file_reach(sp_con,
-                          'Documents/Questions_db/Project_database.xlsx')
-      
+      database_proj <- od$load_rds("Documents/Questions_db/Project_database.rds")
+
       database_proj_rounds <- database_proj %>% 
         distinct(Project_ID, round_id) %>% 
         mutate(round_id = as.numeric(round_id)) %>% 
@@ -558,10 +554,8 @@ server <- function(input, output, session) {
   })
   
   
-  database_research_cycle <-
-    sp_get_file_reach(sp_con,
-                      'Documents/Questions_db/Research_cycle_tracker.xlsx')
-  
+  database_research_cycle <-od$load_rds("Documents/Questions_db/Research_cycle_tracker.rds")
+
   
   # get the list of survey IDs for the user to select
   # survey id
@@ -652,9 +646,8 @@ server <- function(input, output, session) {
     type_id_survey <- input$newType # get the type of the survey
     
     
-    database_proj <-
-      sp_get_file_reach(sp_con, 'Documents/Questions_db/Project_database.xlsx')
-    
+    database_proj <- od$load_rds("Documents/Questions_db/Project_database.rds")
+
     if (nrow(database_proj) > 0) {
       # we'll only need two columns for comparison
       data_cl <-
@@ -743,9 +736,8 @@ server <- function(input, output, session) {
     
     new_input_choices <- data[[3]] # well need to add the labels that we'll be joining
     
-    database_proj <-
-      sp_get_file_reach(sp_con, 'Documents/Questions_db/Project_database.xlsx')
-    
+    database_proj <- od$load_rds("Documents/Questions_db/Project_database.rds")
+
     # clean the comparison DB to not include questions from the project that the user is evaluating
     
     database_clean <- database_proj %>%
@@ -1117,9 +1109,8 @@ server <- function(input, output, session) {
              merger_column_new,
              question_type)
     
-    database_proj <-
-      sp_get_file_reach(sp_con, 'Documents/Questions_db/Project_database.xlsx')
-    
+    database_proj <- od$load_rds("Documents/Questions_db/Project_database.rds")
+
     updatedName <-
       input$newName # get the updated name of the survey
     
@@ -1260,10 +1251,8 @@ server <- function(input, output, session) {
       
     }
     
-    sp_post_file_reach(sp_con,
-                       'Documents/Questions_db',
-                       'Project_database.xlsx')
-
+    od$save_rds(Project_database, "Documents/Questions_db/Project_database.rds")
+    
     
     #Keep only what's needed for the main DB and save
     Database_questions <<- Project_database %>%
@@ -1277,10 +1266,7 @@ server <- function(input, output, session) {
              question_type,
              merger_column)
     
-    sp_post_file_reach(sp_con,
-                       'Documents/Questions_db',
-                       'Database_questions.xlsx')
-
+    od$save_rds(Database_questions, "Documents/Questions_db/Database_questions.rds")
     
     # Optional: Provide a confirmation message
     showModal(
@@ -1362,14 +1348,11 @@ server <- function(input, output, session) {
   # provide the input for the select DB dropdown list in the inputs
   choices <- reactive({
     if (downloadReady()) {
-      database_proj <-
-        sp_get_file_reach(sp_con,
-                          'Documents/Questions_db/Project_database.xlsx')
+      database_proj <- od$load_rds("Documents/Questions_db/Project_database.rds")
+
       c('Select a project', unique(database_proj$Project_ID))
     } else {
-      database_proj <-
-        sp_get_file_reach(sp_con,
-                          'Documents/Questions_db/Project_database.xlsx')
+      database_proj <-od$load_rds("Documents/Questions_db/Project_database.rds")
       c('Select a project', unique(database_proj$Project_ID))
     }
   })
@@ -1391,8 +1374,7 @@ server <- function(input, output, session) {
   
   output$table3 <- renderDT({
     data.frame()
-    data <-
-      sp_get_file_reach(sp_con, 'Documents/Questions_db/Project_database.xlsx') %>% 
+    data <- od$load_rds("Documents/Questions_db/Project_database.rds") %>% 
       arrange(desc(as.numeric(round_id))) %>% 
       group_by(Project_ID) %>% 
       distinct(true_ID, .keep_all = T) %>% 
@@ -1406,9 +1388,7 @@ server <- function(input, output, session) {
       DT::datatable(data)
     } else if (downloadReady()) {
       # if the refresh button was clicked - download the latest table
-      data <-
-        sp_get_file_reach(sp_con,
-                          'Documents/Questions_db/Project_database.xlsx') %>% 
+      data <-od$load_rds("Documents/Questions_db/Project_database.rds") %>% 
         arrange(desc(as.numeric(round_id))) %>% 
         group_by(Project_ID) %>% 
         distinct(true_ID, .keep_all = T) %>% 
@@ -1586,7 +1566,7 @@ server <- function(input, output, session) {
     # bookmark this stage of the session
     session$doBookmark()
     
-    project_table <- sp_get_file_reach(sp_con, 'Documents/Questions_db/Project_database.xlsx')
+    project_table <- od$load_rds("Documents/Questions_db/Project_database.rds")
     list_project <- project_table %>% 
       as.data.frame() %>% 
       pull(Project_ID) %>% unique
@@ -1595,14 +1575,14 @@ server <- function(input, output, session) {
                 choices = c(list_project))
   })
   rounds <- reactive({
-    project_table <- sp_get_file_reach(sp_con, 'Documents/Questions_db/Project_database.xlsx')
+    project_table <- od$load_rds("Documents/Questions_db/Project_database.rds")
     rounds <- project_table %>%
       as.data.frame() %>%
       filter(Project_ID == input$project_id_selected) %>% #'UKR2206B'
       arrange(as.numeric(round_id)) %>% 
       pull(round_id) %>%  unique
     
-    map_table <- sp_get_file_reach(sp_con, 'Documents/Questions_db/map_table.json',driver = '.json') %>% 
+    map_table <-od$load_rds("Documents/Questions_db/map_table.rds") %>% 
       filter(Project_ID == input$project_id_selected) %>% #input$project_id_selected
       pull(round_id) %>% unique
     rounds <- setdiff(rounds,map_table)
@@ -1653,7 +1633,7 @@ server <- function(input, output, session) {
                 "May", "June", "July", "August",
                 "September", "October", "November", "December")
     
-    map_table <- sp_get_file_reach(sp_con, 'Documents/Questions_db/map_table.json',driver = '.json') %>% 
+    map_table <- od$load_rds("Documents/Questions_db/map_table.rds") %>% 
       filter(Project_ID == input$project_id_selected) %>% 
       pull(month) %>% unique
     
@@ -1669,7 +1649,7 @@ server <- function(input, output, session) {
         input$round_selected,
         input$month_selected)
     years <- 2014:as.numeric(format(Sys.Date(),"%Y"))
-    map_table <- sp_get_file_reach(sp_con, 'Documents/Questions_db/map_table.json',driver = '.json')%>% 
+    map_table <- od$load_rds("Documents/Questions_db/map_table.rds")%>% 
       filter(Project_ID == input$project_id_selected)%>%
       distinct(year,month) %>% ## change to input$project_id_selected
       group_by(year,month)%>%
@@ -1698,7 +1678,7 @@ server <- function(input, output, session) {
                             PCODE = rv$oblasts)
     
     # get the sectors from the Project_database
-    project_table <- sp_get_file_reach(sp_con, 'Documents/Questions_db/Project_database.xlsx') %>% 
+    project_table <- od$load_rds("Documents/Questions_db/Project_database.rds") %>% 
       select(Project_ID, round_id, sector) %>% 
       # mutate(round_id = as.numeric(round_id)) %>% 
       distinct() %>% 
@@ -1726,9 +1706,7 @@ server <- function(input, output, session) {
   database <- reactive({
     map_table <- map_table()
     
-    database_map_table <- 
-      sp_get_file_reach(sp_con,
-                        'Documents/Questions_db/map_table.json', driver = '.json') %>% 
+    database_map_table <- od$load_rds("Documents/Questions_db/map_table.rds") %>% 
       as.data.frame()
     
     database_map_table <- bind_rows(database_map_table,map_table) %>% distinct()
@@ -1745,9 +1723,7 @@ server <- function(input, output, session) {
     assign("map_table",map_table,envir = globalenv())
     if(nrow(map_table) > 0){
       
-      isolate(sp_post_file_reach(sp_con,
-                                 'Documents/Questions_db',
-                                 'map_table.json',driver = '.json'))
+      isolate(od$save_rds(map_table, "Documents/Questions_db/map_table.rds"))
     }
     new_selected <- req(input$country_choice_shape_click)
     

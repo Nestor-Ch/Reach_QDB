@@ -1,8 +1,0 @@
-library(reticulate)
-
-
-use_condaenv('www/spacy_env/')
-
-source_python('www/src/semantic_match_simple.py')
-
-print('Python model and environment loaded')

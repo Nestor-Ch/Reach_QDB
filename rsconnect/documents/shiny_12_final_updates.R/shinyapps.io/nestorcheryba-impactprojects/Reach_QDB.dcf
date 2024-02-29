@@ -5,7 +5,7 @@ account: nestorcheryba-impactprojects
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 10557021
-bundleId: 7960616
+bundleId: 8005370
 url: https://nestorcheryba-impactprojects.shinyapps.io/Reach_QDB/
 version: 1
 asMultiple: FALSE
