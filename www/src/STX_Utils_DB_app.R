@@ -32,9 +32,10 @@ numbers_to_string <- function(vec) {
 # define a function that cleans columns
 column_cleaner <- function(df, name, label) {
   new_input = df %>%
-    mutate(text2 = ifelse(
-      str_detect(!!as.symbol(label), "^[0-9]"),
-      sub(".*? ", "", (!!as.symbol(label))),!!as.symbol(label)
+    mutate(text2 = gsub('\\_'," ",!!as.symbol(label)),
+      text2 = ifelse(
+      str_detect(text2, "^[0-9]"),
+      sub(".*? ", "", (text2)),text2
     )) %>%
     mutate(
       text2 = tolower(text2),
@@ -45,6 +46,7 @@ column_cleaner <- function(df, name, label) {
     filter(!grepl("\\d+[._][a-zA-Z]{3}", word)) %>%
     filter(!grepl("\\d+[._]\\d+", word)) %>% 
     filter(! word %in% c(letters, LETTERS)) %>% 
+    filter(! word %in% c(1:100)) %>% 
     group_by(across(c(-word))) %>%
     summarize(text2 = str_c(word, collapse = " ")) %>%
     ungroup()
