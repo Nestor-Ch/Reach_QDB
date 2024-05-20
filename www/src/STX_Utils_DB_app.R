@@ -58,6 +58,8 @@ load.label_colname <- function(data, language = "English") {
   tool_colnames <- data  %>% names
   return(tool_colnames[agrep(paste0("label::", language), tool_colnames)])
 }
+source('www/src/stuff.R')
+
 # 
 # # data downloader
 # sp_get_file_reach <- function (connection, rurl, destfile, driver = ".xlsx") {
@@ -185,12 +187,6 @@ load.label_colname <- function(data, language = "English") {
 #   file.remove(temp_file)
 # }
 
-print('All functions have been added')
 
 
-# Define the Sharepoint connection --------------------------------------------------
-
-source('www/src/get_sharepoint.R')
-
-print('Sharepoint connection established')
 

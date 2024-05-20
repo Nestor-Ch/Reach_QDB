@@ -9,7 +9,6 @@ library(fuzzyjoin)
 library(rhandsontable)
 library(data.table)
 library(ids)
-library(sharepointR)
 library(httr)
 library(xml2)
 library(curl)
@@ -19,8 +18,8 @@ library(utilityR)
 # library(mapview)
 # library(webshot)
 
-source("www/src/STX_Utils_DB_app.R")
 source('.Rprofile')
+source("www/src/STX_Utils_DB_app.R")
 
 # to do -----------
 
@@ -30,6 +29,7 @@ req_variables <- c('q.type','sector','name','label::English','list_name','datash
 # webshot::install_phantomjs(force = T)
 options(shiny.maxRequestSize = 30 * 1024 ^ 2,
         rsconnect.max.bundle.files = 5145728000)
+options(shiny.sanitize.errors = TRUE)
 
 # map setup
 
@@ -210,30 +210,26 @@ server <- function(input, output, session) {
   
   # Block where we get our data from the server
   
-  database_proj <-od$load_rds("Documents/Questions_db/Project_database.rds")
-  
-  database_research_cycle <- od$load_rds("Documents/Questions_db/Research_cycle_tracker.rds")
+
+  source('www/src/get_db.R')
+  database_research_cycle <- dbGetQuery(my_connection , "SELECT * from Research_cycle_db")
   
   # available data block -----------------------------------------------------------
   
   project_table <- reactive({
-    
-    database_proj <- od$load_rds("Documents/Questions_db/Project_database.rds")
-    
-    if(nrow(database_proj)>0){
+    database_proj_dist <- dbGetQuery(my_connection , "SELECT DISTINCT project_ID, round_ID from Reach_QDB")
+    database_proj_count<- dbGetQuery(my_connection , "SELECT project_ID, COUNT(*) as N_questions from Reach_QDB GROUP BY project_ID")
+    dbDisconnect(my_connection)
+    if(nrow(database_proj_dist)>0){
       
-      database_proj_rounds <- database_proj %>% 
-        distinct(project_ID, round_ID) %>% 
+      database_proj_rounds <- database_proj_dist %>% 
         mutate(round_ID = as.numeric(round_ID)) %>% 
         group_by(project_ID) %>% 
         arrange(project_ID,round_ID) %>% 
         summarise(rounds = numbers_to_string(round_ID)) %>% 
         ungroup()
       
-      database_proj %>%
-        group_by(project_ID) %>%
-        summarise(N_questions = n()) %>% 
-        ungroup() %>% 
+      database_proj_count %>% 
         inner_join(database_research_cycle %>% 
                      rename(project_ID=Research_cycle_ID)) %>% 
         inner_join(database_proj_rounds) %>% 
@@ -258,7 +254,7 @@ server <- function(input, output, session) {
   
   observeEvent(input$Workflow_table,{
     
-    if(input$Password_input =='1234'){
+    if(input$Password_input =='Quet1onna1re_Matcher_Secret!'){
       inFile <- input$Workflow_table
       if(!is.null(inFile)){
         file <- read.xlsx(inFile$datapath, sheet='survey')
@@ -409,9 +405,7 @@ server <- function(input, output, session) {
       return(TRUE)
     }else{return(FALSE)}
   })
-  
-  
-  database_research_cycle <-od$load_rds("Documents/Questions_db/Research_cycle_tracker.rds")
+
   
   
   # get the list of survey IDs for the user to select
@@ -458,10 +452,15 @@ server <- function(input, output, session) {
   })
   
   
+  database_proj <- reactive({
+    req(myData1())
+    source('www/src/get_db.R')
+    dbGetQuery(my_connection , "SELECT * from Reach_QDB")
+  })
+  
   new_input_frame <- reactive({
     data <- myData1()   # Access the uploaded dataset from myData1 reactive object
     
-    print(dataReady())
     # Check if data is NULL
     if (is.null(data) || !dataReady() || sector_selected()){ 
       return(NULL)
@@ -491,7 +490,7 @@ server <- function(input, output, session) {
     
     type_id_survey <- input$newType # get the type of the survey
     
-    database_proj <- od$load_rds("Documents/Questions_db/Project_database.rds")
+    database_proj <- database_proj()
     
     
     if (nrow(database_proj) > 0) {
@@ -574,7 +573,7 @@ server <- function(input, output, session) {
     
     new_input <- data[[1]] # as we've worked with a list of dataframes, we need to use the correct element of this list for future operations
     
-    database_proj <- od$load_rds("Documents/Questions_db/Project_database.rds")
+    database_proj <- database_proj()
     
     # clean the comparison DB to not include questions from the project that the user is evaluating
     # create merger column
@@ -1038,8 +1037,6 @@ server <- function(input, output, session) {
       data_for_merging <- rbind(data_for_merging,data_for_merging_new)
     }
     
-    database_proj <- od$load_rds("Documents/Questions_db/Project_database.rds")
-    
     updatedName <-
       input$newName # get the updated name of the survey
     
@@ -1096,15 +1093,15 @@ server <- function(input, output, session) {
         
         Project_database <- rbind(Project_database,repeated_qs)
         Project_database$upload_time <- Sys.time() 
-        Project_database <- rbind(Project_database,database_proj)
-        
+
       }else{
         repeated_qs$upload_time <- Sys.time() 
-        Project_database <- rbind(repeated_qs,database_proj)
+        Project_database <- repeated_qs
       }
       #testo<<-Project_database
-      od$save_rds(Project_database, "Documents/Questions_db/Project_database.rds")
-      
+
+      dbWriteTable(my_connection, 'Reach_QDB', Project_database,append=T)
+      dbDisconnect(my_connection)
       
       print('My boy works the grill')
       
