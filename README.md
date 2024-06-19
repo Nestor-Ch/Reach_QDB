@@ -95,21 +95,21 @@ Setting up the environment relies on the Python paths set up in the .Rprofile fi
 #### The environment itself is set up through the following set of commands:
 
 ##### Creation of the virtual environment on the Shiny server
-reticulate::virtualenv_create(envname = virtualenv_dir, python = python_path)
-##### Activation of the virtual environment
-reticulate::use_virtualenv(virtualenv_dir, required = T)
+`reticulate::virtualenv_create(envname = virtualenv_dir, python = python_path)`
 ##### Package installation
-reticulate::virtualenv_install(virtualenv_dir, packages = PYTHON_DEPENDENCIES, ignore_installed=FALSE)
+`reticulate::virtualenv_install(virtualenv_dir, packages = c("-r", "www/requirements.txt"), ignore_installed=FALSE)`  
+Packages are installed through the requirements.txt to ensure that only compatible versions are installed
+##### Activation of the virtual environment
+`reticulate::use_virtualenv(virtualenv_dir, required = T)`  
 
-In my case, the app also needs to install the language model, this is done through the `system` command, which is a pip wraparound
-
-system("python -c \"import spacy; spacy.cli.download('en_core_web_md')\"")
+In my case, the app also needs to install the language model, this is done through the `system` command, which is a pip wraparound  
+`system("python -c \"import spacy; spacy.cli.download('en_core_web_md')\"")`  
 ##### Function activation
 The matching function is sourced through the following command.
-reticulate::source_python('www/src/semantic_match.py')
+`reticulate::source_python('www/src/semantic_match.py')`  
 
-Most of these functions are wrapped around `if` statements to make the app run faster - it's faster to check  the environment for existance of packages and functions than calling Python functions multiple times.
 After this is run, the function is added into the local environment and can be used as a regular R function.
+When running these things it is important to **not** do any diagnostics using `reticulate::py_config()` this function activates the base environment of the reticulate package and interferes with your virtual environment.
 
 These set ups to a large extent are based on the following [page](https://github.com/ranikay/shiny-reticulate-app#setting-up-the-local-virtual-environment) with tweaks to make it work in my environment.
 
