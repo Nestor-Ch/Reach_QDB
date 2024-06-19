@@ -1,10 +1,13 @@
-import spacy
+#import numpy as np
 import numpy as np
+print(np.__version__)
 import pandas as pd
-
-nlp = spacy.load('en_core_web_md')
+import spacy
 
 def similarity_calculator(qdb, column_new, sim_th):
+  
+  nlp = spacy.load('en_core_web_md')
+
   column_qdb = qdb[['merger_column','true_ID']].drop_duplicates()
   column_qdb = column_qdb.reset_index(drop=True)
 

@@ -1,3 +1,4 @@
+library(bcrypt)
 library(shiny)
 library(shinyjs)
 library(DT)
@@ -36,8 +37,6 @@ options(shiny.sanitize.errors = TRUE)
 
 # Python Setup 
 
-PYTHON_DEPENDENCIES = c('pip', 'numpy','pandas','spacy')
-
 virtualenv_dir = Sys.getenv('VIRTUALENV_NAME')
 python_path = Sys.getenv('PYTHON_PATH')
 
@@ -47,28 +46,25 @@ if(!virtualenv_dir %in% reticulate::virtualenv_list()){
   reticulate::virtualenv_create(envname = virtualenv_dir, python = python_path)
 }
 
-if(any(grepl(Sys.getenv('VIRTUALENV_NAME'),reticulate::virtualenv_list()))){
-  reticulate::use_virtualenv(virtualenv_dir, required = T)
-}
+# install packages
+reticulate::virtualenv_install(virtualenv_dir, 
+                               packages = c("-r", "www/requirements.txt"), 
+                               ignore_installed=TRUE)
 
 # check if modules are available, install only if needed
+reticulate::use_virtualenv(virtualenv_dir, required = T)
 model_av <- reticulate::py_module_available("en_core_web_md")
-spacy_av <- reticulate::py_module_available("spacy")
-pandas_av <- reticulate::py_module_available("pandas")
-# install packages
-if(any(!c(spacy_av,pandas_av))){
-  reticulate::virtualenv_install(virtualenv_dir, packages = PYTHON_DEPENDENCIES, ignore_installed=FALSE)
-}
 
-# install the language model
-if(!model_av){ 
+#install the language model
+if(!model_av){
   system("python -c \"import spacy; spacy.cli.download('en_core_web_md')\"")
 }
 
-# source the python script
 if(!exists('similarity_calculator')){
   reticulate::source_python('www/src/semantic_match.py')
 }
+
+
 
 # end--------------------------------------
 
@@ -210,7 +206,7 @@ server <- function(input, output, session) {
   
   # Block where we get our data from the server
   
-
+  
   source('www/src/get_db.R')
   database_research_cycle <- dbGetQuery(my_connection , "SELECT * from Research_cycle_db")
   
@@ -253,8 +249,7 @@ server <- function(input, output, session) {
   # check if colnames are correct 
   
   observeEvent(input$Workflow_table,{
-    
-    if(input$Password_input =='Quet1onna1re_Matcher_Secret!'){
+    if(!checkpw(input$Password_input,Sys.getenv('ps'))){
       inFile <- input$Workflow_table
       if(!is.null(inFile)){
         file <- read.xlsx(inFile$datapath, sheet='survey')
@@ -405,7 +400,7 @@ server <- function(input, output, session) {
       return(TRUE)
     }else{return(FALSE)}
   })
-
+  
   
   
   # get the list of survey IDs for the user to select
@@ -432,7 +427,7 @@ server <- function(input, output, session) {
   dataReady <- reactiveVal(FALSE)  # Reactive value to track if button is clicked
   
   observeEvent(input$buildTables, {
-
+    
     inputs <- c(input$newName,
                 input$round_id,
                 input$newType)
@@ -1093,13 +1088,13 @@ server <- function(input, output, session) {
         
         Project_database <- rbind(Project_database,repeated_qs)
         Project_database$upload_time <- Sys.time() 
-
+        
       }else{
         repeated_qs$upload_time <- Sys.time() 
         Project_database <- repeated_qs
       }
       #testo<<-Project_database
-
+      
       dbWriteTable(my_connection, 'Reach_QDB', Project_database,append=T)
       dbDisconnect(my_connection)
       
