@@ -36,33 +36,33 @@ options(shiny.sanitize.errors = TRUE)
 
 
 # Python Setup 
-# 
-# virtualenv_dir = Sys.getenv('VIRTUALENV_NAME')
-# python_path = Sys.getenv('PYTHON_PATH')
-# 
-# # Create virtual env and install dependencies
-# 
-# if(!virtualenv_dir %in% reticulate::virtualenv_list()){
-#   reticulate::virtualenv_create(envname = virtualenv_dir, python = python_path)
-# }
-# 
-# # install packages
-# reticulate::virtualenv_install(virtualenv_dir,
-#                                packages = c("-r", "www/requirements.txt"),
-#                                ignore_installed=TRUE)
-# 
-# # check if modules are available, install only if needed
-# reticulate::use_virtualenv(virtualenv_dir, required = T)
-# model_av <- reticulate::py_module_available("en_core_web_md")
-# 
-# #install the language model
-# if(!model_av){
-#   system("python -c \"import spacy; spacy.cli.download('en_core_web_md')\"")
-# }
-# 
-# if(!exists('similarity_calculator')){
-#   reticulate::source_python('www/src/semantic_match.py')
-# }
+
+virtualenv_dir = Sys.getenv('VIRTUALENV_NAME')
+python_path = Sys.getenv('PYTHON_PATH')
+
+# Create virtual env and install dependencies
+
+if(!virtualenv_dir %in% reticulate::virtualenv_list()){
+  reticulate::virtualenv_create(envname = virtualenv_dir, python = python_path)
+}
+
+# install packages
+reticulate::virtualenv_install(virtualenv_dir,
+                               packages = c("-r", "www/requirements.txt"),
+                               ignore_installed=TRUE)
+
+# check if modules are available, install only if needed
+reticulate::use_virtualenv(virtualenv_dir, required = T)
+model_av <- reticulate::py_module_available("en_core_web_md")
+
+#install the language model
+if(!model_av){
+  system("python -c \"import spacy; spacy.cli.download('en_core_web_md')\"")
+}
+
+if(!exists('similarity_calculator')){
+  reticulate::source_python('www/src/semantic_match.py')
+}
 
 
 
