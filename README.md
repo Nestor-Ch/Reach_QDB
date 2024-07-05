@@ -12,15 +12,8 @@ The app allows the user to systematize the KOBO forms used within their organiza
 
 
 ## The structure
-The app is created to support the database structure of a 3 tables:
-   - **The Research_cycle_tracker table** - The table consisting of 2 columns: 
-     - **'Research_cycle_ID'** - column containing the project IDs (unique identifiers of each research cycle (but not of each round of research))
-     - **'Name'** - column containing the project's full names/descriptions
-This first table is created by the user and is one of the only manual inputs needed for the database to function. It serves as a descriptor, telling the user what exactly is conatined in the database at the moment
 
-The following two tables are created by the user during the process of uploading the KOBO form:
-
-
+The following two table is created by the user during the process of uploading the KOBO form:
    - **Project-database** - the main table of the database hosting all of the questions of all of the KOBO forms uploaded into the tool. The questions in this table are not unique, some of them are duplicated if the same question is present in multiple surveys. This dataframe consists of the following columns:
      - **'database_label_clean'** - The clean version of the question's english label
      - **'question_type'** - KOBO column 'type' describing whether the column is a 'select_one', 'select_multiple', 'decimal' or 'integer'
@@ -37,12 +30,6 @@ The following two tables are created by the user during the process of uploading
      - **'label_russian'** - russian translation of the question
      - **'label_russian_choices'** - russian labels of choices for each question
 
-   - **Database_questions** - an evolving table that has the representations of each of the questions. This table is created from the Project-database table each time a new survey is uploaded. It hosts all of the unique questions in the database. Its everchanging nature allows us to track the most recent ways of asking a question. While the matching process (see the 'Matching process' chapter) only uses the Project-database table, this file provides a record of the most novel ways of asking questions. This table has the following columns:
-     - **'database_label_clean'** - The clean version of the question's english label
-     - **'question_type'** - KOBO column 'type' describing whether the column is a 'select_one', 'select_multiple', 'decimal' or 'integer'
-     - **'true_ID'** - The uuid of the unique question - This identifier is used to locate identical questions across different research cycle to allow intertemporal and inter-cycle comparison [Backend column]
-     - **'DB_ID'** - The name of the question in the data - 'name' column in the KOBO form 
-     - **'merger_column'** - a version of 'database_label_clean' with removed stopwords. Used during the process data uploading (see the 'Data uploading' section for more details) [Backend column]
 
 ## Data uploading
 
@@ -64,12 +51,35 @@ Prior to the uploading process the user has to prepare the Kobo form. The only m
    - Emergency Telecommunications
    - Logistics
    - Winterization
+   - Government services
+   - Interview component
+   - Demographics
 
 If the sector in your KOBO tool doesn't match one of these exactly, it will be left blank in the Final QDB, which is fine for Demographic variables and general ones that are needed for backend KOBO functionalities. 
 
 **If your survey sheet has no sector column or if all entries are left blank, the tool won't allow you to proceed.**
 
-To start the uploading process the user has to press the **Browse** button and select the appropriate Kobo form. When the user does this, on the backend the app will upload the form into a special folder in the Sharepoint folder dedicated to the app. After this, the user has to select the ID of the research cycle and the number of the survey round. After clicking this, the user can click the **"Build tables"** button to start the **Matching process**.
+  To begin the matching process click the **Data uploader** and input the access password 
+  (Ask the package mantainers for it if you don't already have it).
+  After inputting the password click **Browse** button and select your kobo tool.  
+  Input the Project's ID, round and the type of respondents that participated in the survey you're uploading. 
+  If the type of the survey you're uploading is not present in the list, please contact the package mantainers.  
+  Once you're done inputting the information, click **Build tables** button. This will start the matching process that will
+  try to find semantical similarities between the questions you're uploading and the ones already present in the database. 
+  Currently the algorithm classifies the matches into 3 categories + the final category that is user defined:  
+
+  - **Matched questions** - cases of a confident match between the loaded and database data, no action from user is required
+  - **New questions**- cases of a confident non-match between the loaded and database data, no action from user is required
+  - **Uncertain cases**- cases where a degree of semantic similarity was found in the database, but we cannot be certain that the 
+  match is perfect. These questions will have an empty cell that the user can click. Once clicked the user will see possible matches 
+  for the question, if one of the matches works as an alternative way of asking the uploaded question, the user can select it. If none
+  of the matches work for the user, they can leave the cell blank (the 4th class of matching) or define it as new
+  - **Blank entries** These occur during the user's work with the 3rd class of matching. If none of the options in the cell
+  are close enough for the user to select and the user doesn't want the question to be present in the database, they can't leave the cell
+  blank and leave it out of the uploading.
+
+  When the user is finished with matching the questions they can click the **Save table** button and load the data into the database.
+
 
 ## Matching process
 

@@ -36,33 +36,33 @@ options(shiny.sanitize.errors = TRUE)
 
 
 # Python Setup 
-
-virtualenv_dir = Sys.getenv('VIRTUALENV_NAME')
-python_path = Sys.getenv('PYTHON_PATH')
-
-# Create virtual env and install dependencies
-
-if(!virtualenv_dir %in% reticulate::virtualenv_list()){
-  reticulate::virtualenv_create(envname = virtualenv_dir, python = python_path)
-}
-
-# install packages
-reticulate::virtualenv_install(virtualenv_dir, 
-                               packages = c("-r", "www/requirements.txt"), 
-                               ignore_installed=TRUE)
-
-# check if modules are available, install only if needed
-reticulate::use_virtualenv(virtualenv_dir, required = T)
-model_av <- reticulate::py_module_available("en_core_web_md")
-
-#install the language model
-if(!model_av){
-  system("python -c \"import spacy; spacy.cli.download('en_core_web_md')\"")
-}
-
-if(!exists('similarity_calculator')){
-  reticulate::source_python('www/src/semantic_match.py')
-}
+# 
+# virtualenv_dir = Sys.getenv('VIRTUALENV_NAME')
+# python_path = Sys.getenv('PYTHON_PATH')
+# 
+# # Create virtual env and install dependencies
+# 
+# if(!virtualenv_dir %in% reticulate::virtualenv_list()){
+#   reticulate::virtualenv_create(envname = virtualenv_dir, python = python_path)
+# }
+# 
+# # install packages
+# reticulate::virtualenv_install(virtualenv_dir,
+#                                packages = c("-r", "www/requirements.txt"),
+#                                ignore_installed=TRUE)
+# 
+# # check if modules are available, install only if needed
+# reticulate::use_virtualenv(virtualenv_dir, required = T)
+# model_av <- reticulate::py_module_available("en_core_web_md")
+# 
+# #install the language model
+# if(!model_av){
+#   system("python -c \"import spacy; spacy.cli.download('en_core_web_md')\"")
+# }
+# 
+# if(!exists('similarity_calculator')){
+#   reticulate::source_python('www/src/semantic_match.py')
+# }
 
 
 
@@ -133,6 +133,24 @@ ui <- function(req) { fluidPage(
   ),
   hr(),
   tabsetPanel(id = 'Tabpanel',
+              tabPanel('Read me',
+                       column(12,
+                              h3("General information"),
+                              span(htmlOutput("text_row1"), style = "font-size:20px;")
+                       ),
+                       column(6,
+                              h3("Preparing the input file"),
+                              span(htmlOutput("text_column1"), style = "font-size:20px;")
+                       ),
+                       column(6,
+                              h3("The matching process"),
+                              span(htmlOutput("text_column2"), style = "font-size:20px;")
+                       ),
+                       column(12,
+                              h3("Why should I do this?"),
+                              span(htmlOutput("text_row2"), style = "font-size:20px;")
+                       ),
+              ),
               tabPanel("Available data",
                        sidebarLayout(
                          sidebarPanel(
@@ -203,6 +221,99 @@ ui <- function(req) { fluidPage(
 }
 
 server <- function(input, output, session) {
+
+  # text block
+  output$text_row1 <- renderText({
+    "
+    The app allows the user to systematize the KOBO forms used within their organization. 
+    The questions of each new research cycle are matched with what already exists in the database and allows to understand the 
+    external connections across research cycles.
+    The following Readme goes through the proccess of uploading your tools into the database.<br>
+    The <b>Available data</b> tab describes the data already uploaded into the database
+    The <b>Data uploader</b> tab allows the user to load their data into the database.
+    "
+  })
+  
+  output$text_column1 <- renderText({
+    "
+    Prior to the uploading process the user has to prepare the Kobo form <b>(NOT DAP)</b>. 
+    The only manual input into the form that is needed from the side of the user is creating and filling the <b>sector</b> column 
+    in the <b>survey</b> sheet of the kobo form. 
+    This column has to describe what sector does each question in the survey correspond to.<br>
+    This sector should be one of the following:
+    <ul>
+   <li>WASH</li>
+   <li>AAP</li>
+   <li>CCCM</li>
+   <li>Shelter and NFI</li>
+   <li>Education</li>
+   <li>Food Security and Livelihoods</li>
+   <li>Health</li>
+   <li>Displacement</li>
+   <li>Protection</li>
+   <li>Cash and Markets</li>
+   <li>Nutrition</li>
+   <li>Emergency Telecommunications</li>
+   <li>Logistics</li>
+   <li>Social cohesion</li>
+   <li>Government services</li>
+   <li>Winterization</li>
+   <li>Interview component</li>
+   <li>Demographics</li>
+   </ul>
+If the sector in your KOBO tool doesn't match one of these exactly, it will be left blank in the Final QDB, 
+which is fine for Demographic variables and general ones that are needed for backend KOBO functionalities. 
+The input kobo file's survey sheet has to have the following columns:
+    <ul>
+   <li>Sector</li>
+   <li>type</li>
+   <li>name</li>
+   <li>label::English</li>
+   <li>label::Ukrainian</li>
+   <li>label::Russian</li>
+   </ul>
+   Other columns are allowed but not necessary
+    "
+  })
+  
+  output$text_column2 <- renderText({
+    "
+    To begin the matching process click the <b>Data uploader</b> and input the access password 
+    (Ask the package mantainers for it if you don't already have it).
+    After inputting the password click <b>Browse</b> button and select your kobo tool.<br>
+    Input the Project's ID, round and the type of respondents that participated in the survey you're uploading. 
+    If the type of the survey you're uploading is not present in the list, please contact the package mantainers.<br>
+    Once you're done inputting the information, click <b>Build tables</b> button. This will start the matching process that will
+    try to find semantical similarities between the questions you're uploading and the ones already present in the database. 
+    Currently the algorithm classifies the matches into 3 categories + the final category that is user defined:
+    <ol>
+   <li><b>Matched questions</b> - cases of a confident match between the loaded and database data, no action from user is required</li>
+   <li><b>New questions</b> - cases of a confident non-match between the loaded and database data, no action from user is required</li>
+   <li><b>Uncertain cases</b> - cases where a degree of semantic similarity was found in the database, but we cannot be certain that the 
+   match is perfect. These questions will have an empty cell that the user can click. Once clicked the user will see possible matches 
+   for the question, if one of the matches works as an alternative way of asking the uploaded question, the user can select it. If none
+   of the matches work for the user, they can leave the cell blank (the 4th class of matching) or define it as new</li>
+   <li><b>Blank entries</b> - These occur during the user's work with the 3rd class of matching. If none of the options in the cell
+   are close enough for the user to select and the user doesn't want the question to be present in the database, they can't leave the cell
+   blank and leave it out of the uploading.</li>
+   </ol><br>
+   When the user is finished with matching the questions they can click the <b>Save table</b> button and load the data into the database.
+    "
+  })
+  
+  output$text_row2 <- renderText({
+    "
+    This process allows us to systematize the tools within the Ukraine mission and understand cross-research cycle relationshipts.
+    It allows one to look at the situation in Ukraine as an evolving continious process and see the interconnectedness of different research cycles
+    This tool is part of a larger effort to systematize all of the data within the Ukraine mission, if you'd like to know more, please check the folling:<br>
+    To browse the Questionnaire database and explore these relationships between these questions, please refer to the <a href='https://impact-initiatives.shinyapps.io/QDB_browser/'>QDB_browser tool</a><br>
+    To browse the etire Reach database and see the data for each research cycle, please refer to the <a href='https://impact-initiatives.shinyapps.io/Reach_DB_browser/'>Reach_DB browser tool</a><br>
+    If you have any questions or bug reports, please contact the app maintainers:<br>
+    nestor.cheryba@reach-initiative.org<br>
+    bohdan.pelekh@reach-initiative.org<br>
+    "
+  })
+  
   
   # Block where we get our data from the server
   
@@ -249,7 +360,7 @@ server <- function(input, output, session) {
   # check if colnames are correct 
   
   observeEvent(input$Workflow_table,{
-    if(!checkpw(input$Password_input,Sys.getenv('ps'))){
+    if(input$Password_input==Sys.getenv('pas')){
       inFile <- input$Workflow_table
       if(!is.null(inFile)){
         file <- read.xlsx(inFile$datapath, sheet='survey')
