@@ -47,9 +47,15 @@ if(!virtualenv_dir %in% reticulate::virtualenv_list()){
 }
 
 # install packages
-reticulate::virtualenv_install(virtualenv_dir,
-                               packages = c("-r", "www/requirements.txt"),
-                               ignore_installed=TRUE)
+# numpy_av <-  reticulate::py_module_available("numpy")
+# pandas_av <- reticulate::py_module_available("pandas")
+# spacy_av <- reticulate::py_module_available("spacy")
+
+# if(!(pandas_av&spacy_av)){
+  reticulate::virtualenv_install(virtualenv_dir,
+                                 packages = c("-r", "www/requirements.txt"),
+                                 ignore_installed=TRUE)
+# }
 
 # check if modules are available, install only if needed
 reticulate::use_virtualenv(virtualenv_dir, required = T)
@@ -221,7 +227,7 @@ ui <- function(req) { fluidPage(
 }
 
 server <- function(input, output, session) {
-
+  
   # text block
   output$text_row1 <- renderText({
     "
@@ -404,7 +410,6 @@ The input kobo file's survey sheet has to have the following columns:
       # Only read data if button is clicked
       return(NULL)
     
-    
     data <- utilityR::load.tool.survey(inFile$datapath,label_colname = 'label::English')
     # testo_2<<-data
     #filter out rows with columns we don't need
@@ -416,6 +421,10 @@ The input kobo file's survey sheet has to have the following columns:
           name
         )
       )
+    
+    if('Sector' %in% names(data)){
+      names(data)[which(names(data)%in%'Sector')] <- 'sector'
+    }
     
     # rename the label column, filter the needed types and get the needed columns
     data <- select(data, any_of(req_variables)) %>%
@@ -460,8 +469,7 @@ The input kobo file's survey sheet has to have the following columns:
       # drop them from the dataframe
       data <- data %>% 
         mutate(sector = ifelse(sector %in% wrong_sectors, NA, sector))
-      
-      
+
       # if all are na then stop
       if (length(unique(data$sector))==1 &
           all(is.na(unique(data$sector)))){
@@ -493,11 +501,11 @@ The input kobo file's survey sheet has to have the following columns:
     }
     
     if('sector' %in% names(data)){
-      
       data <- data %>% 
         select(sector,name, label_english, list_name, q.type, datasheet) %>%
         mutate(sector = gsub('\\&|\\&amp;','and',sector)) %>% 
         distinct() 
+      data
     }
     
   })
@@ -506,6 +514,8 @@ The input kobo file's survey sheet has to have the following columns:
     req(myData1())
     
     data <- myData1()
+    # test2<<-data
+    # data<-test2
     if(all(is.na(data$sector)) || 
        !('sector' %in% names(data))){
       return(TRUE)
@@ -538,7 +548,6 @@ The input kobo file's survey sheet has to have the following columns:
   dataReady <- reactiveVal(FALSE)  # Reactive value to track if button is clicked
   
   observeEvent(input$buildTables, {
-    
     inputs <- c(input$newName,
                 input$round_id,
                 input$newType)
@@ -565,13 +574,15 @@ The input kobo file's survey sheet has to have the following columns:
   })
   
   new_input_frame <- reactive({
+
     data <- myData1()   # Access the uploaded dataset from myData1 reactive object
-    
+    # print(0)
+    # print(head(data))
+    # print(dataReady())
     # Check if data is NULL
     if (is.null(data) || !dataReady() || sector_selected()){ 
       return(NULL)
     }
-    
     #Cleaning the frame
     
     showModal(
