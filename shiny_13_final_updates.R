@@ -414,6 +414,7 @@ The input kobo file's survey sheet has to have the following columns:
     # testo_2<<-data
     #filter out rows with columns we don't need
     data <- data %>%
+      mutate(name = gsub('\\.','-',name)) %>% 
       filter(
         !grepl(
           'enum|partner|rectangle|geo_location|geopoint|street_type_calc|
@@ -436,7 +437,6 @@ The input kobo file's survey sheet has to have the following columns:
     
     
     if(!'sector' %in% names(data)){
-      
       showModal(
         modalDialog(
           title = "Missing columns",
@@ -455,7 +455,7 @@ The input kobo file's survey sheet has to have the following columns:
                                            'Food Security and Livelihoods','Winterization','Health','Displacement',
                                            'Cash and Markets','Government services','Social cohesion',
                                            'Protection','Nutrition','Emergency Telecommunications',
-                                           'Logistics','Interview component','Demographics', NA))
+                                           'Logistics','Interview component','Demographics'))
        )
     ){
       # get the list of the wrong sectors
@@ -471,13 +471,11 @@ The input kobo file's survey sheet has to have the following columns:
         mutate(sector = ifelse(sector %in% wrong_sectors, NA, sector))
 
       # if all are na then stop
-      if (length(unique(data$sector))==1 &
-          all(is.na(unique(data$sector)))){
-        
+      if (all(is.na(data$sector))){
         showModal(
           modalDialog(
             title = "Wrong sectors entered",
-            paste0("All of the sectors you've entered into your file are wrong and don't exist. Please try again"),
+            paste0("All of the sectors you've entered into your file are NA or are not in the list. Please try again"),
             footer = NULL,
             easyClose = TRUE
           )
@@ -486,10 +484,11 @@ The input kobo file's survey sheet has to have the following columns:
         output$final_table <- NULL
         
       }else{
+        removeModal()
         # if only a few were wrong
         showModal(
           modalDialog(
-            title = "Wrong sectors entered",
+            title = "Processing: Wrong sectors entered",
             paste0("The file uploaded has the wrong sector names entered, the questions with 
                  following sector names will be assigned a blank sector: ", paste0(wrong_sectors, collapse=', ')),
             footer = NULL,
